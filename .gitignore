@@ -1,0 +1,39 @@
+# Entorno virtual de Python
+.venv/
+venv/
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos temporales
+*.tmp
+*.temp
+*.log
+
+# Archivos de VS Code
+.vscode/
+
+# Archivos de PyCharm
+.idea/
+
+# Configuración de pytest
+.pytest_cache/
+
+# Configuración de MyPy
+.mypy_cache/
+
+# Archivos de cobertura
+.coverage
+htmlcov/
+
+# Bases de datos SQLite (si son temporales)
+*.sqlite3
+
+# Variables de entorno
+.env
+
+# Windows
+Thumbs.db
+Desktop.ini
