@@ -11,22 +11,50 @@ def initialize_database():
 
     cursor = conn.cursor()
 
+    # Tabla de dominios
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS domains (
+        CREATE TABLE IF NOT EXISTS domains (
 
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-        domain TEXT UNIQUE NOT NULL,
+            domain TEXT UNIQUE NOT NULL,
 
-        api_key TEXT,
+            api_key TEXT,
 
-        enabled INTEGER DEFAULT 1,
+            enabled INTEGER DEFAULT 1,
 
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
-    )
+        )
+    """)
+
+    # Tabla de URLs
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS urls (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            domain_id INTEGER NOT NULL,
+
+            url TEXT UNIQUE NOT NULL,
+
+            status TEXT DEFAULT 'PENDIENTE',
+
+            response_code INTEGER,
+
+            response_message TEXT DEFAULT '',
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (domain_id)
+                REFERENCES domains(id)
+                ON DELETE CASCADE
+
+        )
     """)
 
     conn.commit()
