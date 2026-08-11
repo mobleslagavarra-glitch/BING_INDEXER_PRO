@@ -1,52 +1,75 @@
-from datetime import datetime
+import sqlite3
 
-from core.database import Database
+from core.database import DB_FILE
 
 
 class HistoryService:
 
-    def __init__(self):
+    def get_connection(self):
+        return sqlite3.connect(DB_FILE)
 
-        self.db = Database()
+    def add(self, event_type, description):
+        if not event_type:
+            raise ValueError("El tipo de evento es obligatorio")
 
-    def add(
+        if not description:
+            raise ValueError("La descripción es obligatoria")
 
-        self,
+        conn = self.get_connection()
 
-        event_type,
+        try:
+            cursor = conn.cursor()
 
-        description
-
-    ):
-
-        self.db.execute(
-
-            """
-
-            INSERT INTO history
-
-            (
-
-                event_date,
-
+            cursor.execute("""
+                INSERT INTO history (
+                    event_type,
+                    description
+                )
+                VALUES (?, ?)
+            """, (
                 event_type,
-
                 description
+            ))
 
-            )
+            conn.commit()
 
-            VALUES(?,?,?)
+            return cursor.lastrowid
 
-            """,
+        finally:
+            conn.close()
 
-            (
+    def get_all(self):
+        conn = self.get_connection()
 
-                datetime.now().isoformat(),
+        try:
+            cursor = conn.cursor()
 
-                event_type,
+            cursor.execute("""
+                SELECT
+                    id,
+                    event_date,
+                    event_type,
+                    description
+                FROM history
+                ORDER BY id DESC
+            """)
 
-                description
+            return cursor.fetchall()
 
-            )
+        finally:
+            conn.close()
 
-        )
+    def clear(self):
+        conn = self.get_connection()
+
+        try:
+            cursor = conn.cursor()
+
+            cursor.execute("DELETE FROM history")
+
+            conn.commit()
+
+            return cursor.rowcount
+
+        finally:
+            conn.close()

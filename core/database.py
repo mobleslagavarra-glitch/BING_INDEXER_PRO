@@ -30,7 +30,7 @@ def initialize_database():
         )
     """)
 
-    # Tabla de URLs
+        # Tabla de URLs
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS urls (
 
@@ -53,6 +53,21 @@ def initialize_database():
             FOREIGN KEY (domain_id)
                 REFERENCES domains(id)
                 ON DELETE CASCADE
+
+        )
+    """)
+
+    # Tabla de historial
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS history (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            event_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            event_type TEXT NOT NULL,
+
+            description TEXT NOT NULL
 
         )
     """)

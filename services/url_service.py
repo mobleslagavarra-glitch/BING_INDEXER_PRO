@@ -100,4 +100,17 @@ class UrlService:
         if url is None:
             return ""
 
-        return url.strip()
+        url = url.strip()
+
+        # Convertir enlaces Markdown:
+        # [https://ejemplo.com](https://ejemplo.com)
+        if url.startswith("[") and "](" in url and url.endswith(")"):
+            cierre = url.find("](")
+
+            if cierre > 0:
+                destino = url[cierre + 2:-1].strip()
+
+                if destino:
+                    url = destino
+
+        return url
