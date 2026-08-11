@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QHBoxLayout,
-    QStackedWidget
+    QStackedWidget,
 )
 
 from core.version import Version
@@ -14,6 +14,7 @@ from gui.navigation import Navigation
 from gui.pages.dashboard import DashboardPage
 from gui.pages.domains import DomainsPage
 from gui.pages.urls import UrlsPage
+from gui.pages.indexnow import IndexNowPage
 from gui.pages.history import HistoryPage
 from gui.pages.settings import SettingsPage
 
@@ -39,6 +40,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(DashboardPage())
         self.stack.addWidget(DomainsPage())
         self.stack.addWidget(UrlsPage())
+        self.stack.addWidget(IndexNowPage())
         self.stack.addWidget(HistoryPage())
         self.stack.addWidget(SettingsPage())
 
