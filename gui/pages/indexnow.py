@@ -59,14 +59,20 @@ class IndexNowPage(QWidget):
 
         self.setLayout(layout)
 
-        self.btn_send.clicked.connect(self.send_to_indexnow)
-        self.btn_refresh.clicked.connect(self.load_urls)
+        self.btn_send.clicked.connect(
+            self.send_to_indexnow
+        )
+
+        self.btn_refresh.clicked.connect(
+            self.load_urls
+        )
 
         self.load_urls()
 
     def load_urls(self):
 
         try:
+
             urls = self.url_service.get_urls()
             domains = self.domain_service.get_domains()
 
@@ -76,10 +82,20 @@ class IndexNowPage(QWidget):
             }
 
             # Solo mostrar URLs pendientes o con error
+            # cuyo dominio tenga API key configurada.
+            valid_domain_ids = {
+                domain.id
+                for domain in domains
+                if domain.api_key
+            }
+
             urls = [
                 url
                 for url in urls
-                if url.status in ("PENDIENTE", "ERROR")
+                if (
+                    url.status in ("PENDIENTE", "ERROR")
+                    and url.domain_id in valid_domain_ids
+                )
             ]
 
             self.table.setRowCount(len(urls))
@@ -259,6 +275,7 @@ class IndexNowPage(QWidget):
             url.response_message = str(error)
 
             try:
+
                 self.url_service.update_url(url)
 
                 self.history_service.add(

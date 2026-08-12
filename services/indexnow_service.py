@@ -8,24 +8,9 @@ class IndexNowService:
 
     ENDPOINT = "https://api.indexnow.org/indexnow"
 
-    def submit(self, host, key, url):
-
+    def _normalize_host(self, host):
         if not host:
             raise ValueError("El host es obligatorio")
-
-        if not key:
-            raise ValueError("La API key es obligatoria")
-
-        if not url:
-            raise ValueError("La URL es obligatoria")
-
-        # Normalizar el dominio para IndexNow.
-        # Acepta:
-        # https://dominio.com/
-        # http://dominio.com/
-        # dominio.com
-        # y devuelve:
-        # dominio.com
 
         host = host.strip()
 
@@ -38,12 +23,32 @@ class IndexNowService:
         if not host:
             raise ValueError("El host no es válido")
 
+        return host
+
+    def _send(self, host, key, urls):
+        if not key:
+            raise ValueError("La API key es obligatoria")
+
+        if not urls:
+            raise ValueError("Debe existir al menos una URL")
+
+        host = self._normalize_host(host)
+
+        key = key.strip()
+
+        clean_urls = [
+            url.strip()
+            for url in urls
+            if url and url.strip()
+        ]
+
+        if not clean_urls:
+            raise ValueError("No hay URLs válidas para enviar")
+
         payload = {
             "host": host,
-            "key": key.strip(),
-            "urlList": [
-                url.strip()
-            ]
+            "key": key,
+            "urlList": clean_urls
         }
 
         data = json.dumps(payload).encode("utf-8")
@@ -88,3 +93,22 @@ class IndexNowService:
                 "status_code": None,
                 "message": str(error.reason)
             }
+
+    def submit(self, host, key, url):
+
+        if not url:
+            raise ValueError("La URL es obligatoria")
+
+        return self._send(
+            host,
+            key,
+            [url]
+        )
+
+    def submit_batch(self, host, key, urls):
+
+        return self._send(
+            host,
+            key,
+            urls
+        )
