@@ -1,6 +1,7 @@
 import json
 import urllib.request
 import urllib.error
+from urllib.parse import urlparse
 
 
 class IndexNowService:
@@ -8,6 +9,7 @@ class IndexNowService:
     ENDPOINT = "https://api.indexnow.org/indexnow"
 
     def submit(self, host, key, url):
+
         if not host:
             raise ValueError("El host es obligatorio")
 
@@ -17,11 +19,30 @@ class IndexNowService:
         if not url:
             raise ValueError("La URL es obligatoria")
 
+        # Normalizar el dominio para IndexNow.
+        # Acepta:
+        # https://dominio.com/
+        # http://dominio.com/
+        # dominio.com
+        # y devuelve:
+        # dominio.com
+
+        host = host.strip()
+
+        if "://" in host:
+            parsed = urlparse(host)
+            host = parsed.netloc
+        else:
+            host = host.rstrip("/")
+
+        if not host:
+            raise ValueError("El host no es válido")
+
         payload = {
             "host": host,
-            "key": key,
+            "key": key.strip(),
             "urlList": [
-                url
+                url.strip()
             ]
         }
 
@@ -37,7 +58,12 @@ class IndexNowService:
         )
 
         try:
-            with urllib.request.urlopen(request, timeout=15) as response:
+
+            with urllib.request.urlopen(
+                request,
+                timeout=15
+            ) as response:
+
                 return {
                     "status_code": response.status,
                     "message": response.read().decode(
@@ -47,6 +73,7 @@ class IndexNowService:
                 }
 
         except urllib.error.HTTPError as error:
+
             return {
                 "status_code": error.code,
                 "message": error.read().decode(
@@ -56,6 +83,7 @@ class IndexNowService:
             }
 
         except urllib.error.URLError as error:
+
             return {
                 "status_code": None,
                 "message": str(error.reason)
