@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True)
 class Version:
     APP_NAME = "BING INDEXER PRO"

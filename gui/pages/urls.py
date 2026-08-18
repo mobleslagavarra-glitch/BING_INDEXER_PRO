@@ -49,8 +49,8 @@ class UrlsPage(QWidget):
         botones = QHBoxLayout()
 
         self.btn_add = QPushButton("➕ Añadir")
-        self.btn_edit = QPushButton("✏ Editar")
-        self.btn_delete = QPushButton("🗑 Eliminar")
+        self.btn_edit = QPushButton("✏️ Editar")
+        self.btn_delete = QPushButton("🗑️ Eliminar")
         self.btn_refresh = QPushButton("🔄 Actualizar")
 
         botones.addWidget(self.btn_add)
@@ -75,6 +75,7 @@ class UrlsPage(QWidget):
     def load_urls(self):
 
         try:
+
             urls = self.url_service.get_urls()
             domains = self.domain_service.get_domains()
 
@@ -151,11 +152,13 @@ class UrlsPage(QWidget):
         domains = self.domain_service.get_domains()
 
         if not domains:
+
             QMessageBox.warning(
                 self,
                 "Sin dominios",
                 "Debes crear al menos un dominio antes de añadir una URL."
             )
+
             return
 
         dialog = UrlDialog(
@@ -190,11 +193,13 @@ class UrlsPage(QWidget):
         row = self.table.currentRow()
 
         if row < 0:
+
             QMessageBox.information(
                 self,
                 "Editar URL",
                 "Selecciona una URL."
             )
+
             return
 
         url_id = int(
@@ -204,11 +209,13 @@ class UrlsPage(QWidget):
         url = self.url_service.get_url(url_id)
 
         if url is None:
+
             QMessageBox.warning(
                 self,
                 "Editar URL",
                 "La URL ya no existe."
             )
+
             self.load_urls()
             return
 
@@ -257,11 +264,13 @@ class UrlsPage(QWidget):
         row = self.table.currentRow()
 
         if row < 0:
+
             QMessageBox.information(
                 self,
                 "Eliminar URL",
                 "Selecciona una URL."
             )
+
             return
 
         url_id = int(

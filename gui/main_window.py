@@ -30,11 +30,16 @@ class MainWindow(QMainWindow):
 
         self.resize(1280, 720)
 
-        MainMenu(self)
-        self.setStatusBar(StatusBar())
-
+        # Navegación lateral
         self.navigation = Navigation()
 
+        # Menú superior
+        MainMenu(self)
+
+        # Barra de estado
+        self.setStatusBar(StatusBar())
+
+        # Páginas
         self.stack = QStackedWidget()
 
         self.stack.addWidget(DashboardPage())
@@ -44,10 +49,12 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(HistoryPage())
         self.stack.addWidget(SettingsPage())
 
+        # Conectar navegación lateral con las páginas
         self.navigation.currentRowChanged.connect(
             self.stack.setCurrentIndex
         )
 
+        # Contenedor principal
         central = QWidget()
 
         layout = QHBoxLayout()

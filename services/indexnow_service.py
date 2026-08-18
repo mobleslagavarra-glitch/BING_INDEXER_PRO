@@ -12,7 +12,7 @@ class IndexNowService:
         if not host:
             raise ValueError("El host es obligatorio")
 
-        host = host.strip()
+        host = str(host).strip()
 
         if "://" in host:
             parsed = urlparse(host)
@@ -33,13 +33,12 @@ class IndexNowService:
             raise ValueError("Debe existir al menos una URL")
 
         host = self._normalize_host(host)
-
-        key = key.strip()
+        key = str(key).strip()
 
         clean_urls = [
-            url.strip()
+            str(url).strip()
             for url in urls
-            if url and url.strip()
+            if url and str(url).strip()
         ]
 
         if not clean_urls:
@@ -63,52 +62,31 @@ class IndexNowService:
         )
 
         try:
-
-            with urllib.request.urlopen(
-                request,
-                timeout=15
-            ) as response:
-
+            with urllib.request.urlopen(request, timeout=15) as response:
                 return {
+                    "success": response.status in (200, 202),
                     "status_code": response.status,
-                    "message": response.read().decode(
-                        "utf-8",
-                        errors="replace"
-                    )
+                    "message": response.read().decode("utf-8", errors="replace")
                 }
 
         except urllib.error.HTTPError as error:
-
             return {
+                "success": False,
                 "status_code": error.code,
-                "message": error.read().decode(
-                    "utf-8",
-                    errors="replace"
-                )
+                "message": error.read().decode("utf-8", errors="replace")
             }
 
         except urllib.error.URLError as error:
-
             return {
+                "success": False,
                 "status_code": None,
                 "message": str(error.reason)
             }
 
     def submit(self, host, key, url):
-
         if not url:
             raise ValueError("La URL es obligatoria")
-
-        return self._send(
-            host,
-            key,
-            [url]
-        )
+        return self._send(host, key, [url])
 
     def submit_batch(self, host, key, urls):
-
-        return self._send(
-            host,
-            key,
-            urls
-        )
+        return self._send(host, key, urls)

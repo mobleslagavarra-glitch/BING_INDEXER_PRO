@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from models.url import UrlRecord
 from repositories.url_repository import UrlRepository
 from repositories.domain_repository import DomainRepository
@@ -31,6 +33,8 @@ class UrlService:
 
         if domain is None:
             raise ValueError("El dominio no existe")
+
+        self._validate_url_domain(url, domain.domain)
 
         if self._url_exists(url):
             raise ValueError(f"La URL '{url}' ya existe")
@@ -70,6 +74,8 @@ class UrlService:
         if not url:
             raise ValueError("La URL no puede estar vacía")
 
+        self._validate_url_domain(url, domain.domain)
+
         for item in self.repository.get_all():
             if item.id != url_record.id and item.url.lower() == url.lower():
                 raise ValueError(
@@ -100,17 +106,52 @@ class UrlService:
         if url is None:
             return ""
 
-        url = url.strip()
+        url = str(url).strip()
 
-        # Convertir enlaces Markdown:
-        # [https://ejemplo.com](https://ejemplo.com)
-        if url.startswith("[") and "](" in url and url.endswith(")"):
-            cierre = url.find("](")
+        if url.startswith("[") and "](" in url:
+            partes = url.split("](", 1)
 
-            if cierre > 0:
-                destino = url[cierre + 2:-1].strip()
+            if len(partes) == 2:
+                url = partes[0][1:].strip()
 
-                if destino:
-                    url = destino
+        return url.strip()
 
-        return url
+    @staticmethod
+    def _normalize_host(host):
+        if not host:
+            return ""
+
+        host = str(host).strip()
+
+        if "://" not in host:
+            host = "https://" + host
+
+        parsed = urlparse(host)
+
+        return (
+            parsed.hostname.lower().rstrip(".")
+            if parsed.hostname
+            else ""
+        )
+
+    @classmethod
+    def _validate_url_domain(cls, url, domain):
+        url_host = cls._normalize_host(url)
+        domain_host = cls._normalize_host(domain)
+
+        if not url_host:
+            raise ValueError(
+                "La URL no contiene un dominio válido"
+            )
+
+        if not domain_host:
+            raise ValueError(
+                "El dominio seleccionado no es válido"
+            )
+
+        if url_host != domain_host:
+            raise ValueError(
+                "La URL no pertenece al dominio seleccionado.\n\n"
+                f"Dominio seleccionado: {domain_host}\n"
+                f"Dominio de la URL: {url_host}"
+            )

@@ -20,7 +20,7 @@ class DashboardPage(QWidget):
 
         layout = QVBoxLayout()
 
-        titulo = QLabel("🏠 Dashboard")
+        titulo = QLabel("📊 Dashboard")
         titulo.setStyleSheet(
             "font-size: 24px; font-weight: bold;"
         )
@@ -39,7 +39,9 @@ class DashboardPage(QWidget):
         layout.addLayout(self.cards_layout)
 
         self.btn_refresh = QPushButton("🔄 Actualizar")
-        self.btn_refresh.clicked.connect(self.load_statistics)
+        self.btn_refresh.clicked.connect(
+            self.load_statistics
+        )
 
         layout.addWidget(self.btn_refresh)
 

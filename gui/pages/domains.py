@@ -27,6 +27,7 @@ class DomainsPage(QWidget):
 
         self.table = QTableWidget()
         self.table.setColumnCount(4)
+
         self.table.setHorizontalHeaderLabels([
             "ID",
             "Dominio",
@@ -47,8 +48,8 @@ class DomainsPage(QWidget):
         botones = QHBoxLayout()
 
         self.btn_add = QPushButton("➕ Añadir")
-        self.btn_edit = QPushButton("✏ Editar")
-        self.btn_delete = QPushButton("🗑 Eliminar")
+        self.btn_edit = QPushButton("✏️ Editar")
+        self.btn_delete = QPushButton("🗑️ Eliminar")
         self.btn_refresh = QPushButton("🔄 Actualizar")
 
         botones.addWidget(self.btn_add)
@@ -63,16 +64,15 @@ class DomainsPage(QWidget):
 
         self.setLayout(layout)
 
-        # Conexiones de los botones
         self.btn_add.clicked.connect(self.add_domain)
         self.btn_edit.clicked.connect(self.edit_domain)
         self.btn_delete.clicked.connect(self.delete_domain)
         self.btn_refresh.clicked.connect(self.load_domains)
 
-        # Cargar dominios al abrir la página
         self.load_domains()
 
     def load_domains(self):
+
         try:
             domains = self.service.get_domains()
 
@@ -113,6 +113,7 @@ class DomainsPage(QWidget):
             self.table.resizeColumnsToContents()
 
         except Exception as error:
+
             QMessageBox.critical(
                 self,
                 "Error",
@@ -120,6 +121,7 @@ class DomainsPage(QWidget):
             )
 
     def add_domain(self):
+
         dialog = DomainDialog(self)
 
         if dialog.exec() != DomainDialog.DialogCode.Accepted:
@@ -128,6 +130,7 @@ class DomainsPage(QWidget):
         data = dialog.get_data()
 
         try:
+
             self.service.add_domain(
                 data["domain"],
                 data["api_key"],
@@ -143,6 +146,7 @@ class DomainsPage(QWidget):
             )
 
         except Exception as error:
+
             QMessageBox.critical(
                 self,
                 "Error",
@@ -150,17 +154,21 @@ class DomainsPage(QWidget):
             )
 
     def edit_domain(self):
+
         row = self.table.currentRow()
 
         if row < 0:
+
             QMessageBox.warning(
                 self,
                 "Editar dominio",
                 "Selecciona un dominio de la lista."
             )
+
             return
 
         try:
+
             domain_id = int(
                 self.table.item(row, 0).text()
             )
@@ -168,21 +176,33 @@ class DomainsPage(QWidget):
             domain = self.service.get_domain(domain_id)
 
             if domain is None:
+
                 QMessageBox.warning(
                     self,
                     "Editar dominio",
                     "El dominio seleccionado no existe."
                 )
+
                 self.load_domains()
                 return
 
             dialog = DomainDialog(self)
 
-            dialog.setWindowTitle("Editar dominio")
+            dialog.setWindowTitle(
+                "Editar dominio"
+            )
 
-            dialog.domain_edit.setText(domain.domain)
-            dialog.api_key_edit.setText(domain.api_key)
-            dialog.enabled_check.setChecked(domain.enabled)
+            dialog.domain_edit.setText(
+                domain.domain
+            )
+
+            dialog.api_key_edit.setText(
+                domain.api_key
+            )
+
+            dialog.enabled_check.setChecked(
+                domain.enabled
+            )
 
             if dialog.exec() != DomainDialog.DialogCode.Accepted:
                 return
@@ -204,6 +224,7 @@ class DomainsPage(QWidget):
             )
 
         except Exception as error:
+
             QMessageBox.critical(
                 self,
                 "Error",
@@ -211,17 +232,21 @@ class DomainsPage(QWidget):
             )
 
     def delete_domain(self):
+
         row = self.table.currentRow()
 
         if row < 0:
+
             QMessageBox.warning(
                 self,
                 "Eliminar dominio",
                 "Selecciona un dominio de la lista."
             )
+
             return
 
         try:
+
             domain_id = int(
                 self.table.item(row, 0).text()
             )
@@ -255,6 +280,7 @@ class DomainsPage(QWidget):
             )
 
         except Exception as error:
+
             QMessageBox.critical(
                 self,
                 "Error",

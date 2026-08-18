@@ -113,7 +113,9 @@ class UrlRepository:
 
     def update(self, url_record):
         if url_record.id is None:
-            raise ValueError("No se puede actualizar una URL sin ID")
+            raise ValueError(
+                "No se puede actualizar una URL sin ID"
+            )
 
         conn = self.get_connection()
 
@@ -122,7 +124,8 @@ class UrlRepository:
 
             cursor.execute("""
                 UPDATE urls
-                SET domain_id = ?,
+                SET
+                    domain_id = ?,
                     url = ?,
                     status = ?,
                     response_code = ?,
@@ -134,7 +137,7 @@ class UrlRepository:
                 url_record.url,
                 url_record.status,
                 url_record.response_code,
-                url_record.response_message,
+                url_record.response_message or "",
                 url_record.id,
             ))
 
