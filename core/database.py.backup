@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 
 from core.paths import DATABASE
 
@@ -30,7 +30,7 @@ def initialize_database():
         )
     """)
 
-    # Tabla de URLs
+        # Tabla de URLs
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS urls (
 
@@ -68,21 +68,6 @@ def initialize_database():
             event_type TEXT NOT NULL,
 
             description TEXT NOT NULL
-
-        )
-    """)
-
-    # Tabla de configuración
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS settings (
-
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-            key TEXT UNIQUE NOT NULL,
-
-            value TEXT DEFAULT '',
-
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
         )
     """)
