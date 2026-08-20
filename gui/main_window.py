@@ -1,9 +1,11 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QHBoxLayout,
     QStackedWidget,
 )
+
+from PySide6.QtCore import QTimer
 
 from core.version import Version
 
@@ -17,6 +19,8 @@ from gui.pages.urls import UrlsPage
 from gui.pages.indexnow import IndexNowPage
 from gui.pages.history import HistoryPage
 from gui.pages.settings import SettingsPage
+
+from services.automation_service import AutomationService
 
 
 class MainWindow(QMainWindow):
@@ -65,3 +69,30 @@ class MainWindow(QMainWindow):
         central.setLayout(layout)
 
         self.setCentralWidget(central)
+
+        # Automatización de IndexNow
+        self.automation_service = AutomationService()
+
+        self.automation_timer = QTimer(self)
+
+        self.automation_timer.setInterval(
+            self.automation_service.INTERVAL_MS
+        )
+
+        self.automation_timer.timeout.connect(
+            self.run_automation
+        )
+
+        self.automation_timer.start()
+
+    def run_automation(self):
+
+        try:
+
+            self.automation_service.run()
+
+        except Exception as error:
+
+            print(
+                f"Error en automatización de IndexNow: {error}"
+            )
