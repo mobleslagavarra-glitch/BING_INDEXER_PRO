@@ -21,6 +21,7 @@ from gui.pages.history import HistoryPage
 from gui.pages.settings import SettingsPage
 
 from services.automation_service import AutomationService
+from services.settings_service import SettingsService
 
 
 class MainWindow(QMainWindow):
@@ -34,16 +35,12 @@ class MainWindow(QMainWindow):
 
         self.resize(1280, 720)
 
-        # Navegación lateral
         self.navigation = Navigation()
 
-        # Menú superior
         MainMenu(self)
 
-        # Barra de estado
         self.setStatusBar(StatusBar())
 
-        # Páginas
         self.stack = QStackedWidget()
 
         self.stack.addWidget(DashboardPage())
@@ -53,12 +50,10 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(HistoryPage())
         self.stack.addWidget(SettingsPage())
 
-        # Conectar navegación lateral con las páginas
         self.navigation.currentRowChanged.connect(
             self.stack.setCurrentIndex
         )
 
-        # Contenedor principal
         central = QWidget()
 
         layout = QHBoxLayout()
@@ -72,18 +67,52 @@ class MainWindow(QMainWindow):
 
         # Automatización de IndexNow
         self.automation_service = AutomationService()
+        self.settings_service = SettingsService()
 
         self.automation_timer = QTimer(self)
 
-        self.automation_timer.setInterval(
-            self.automation_service.INTERVAL_MS
-        )
+        self.update_automation_interval()
 
         self.automation_timer.timeout.connect(
             self.run_automation
         )
 
         self.automation_timer.start()
+
+    def update_automation_interval(self):
+
+        try:
+
+            interval = self.settings_service.get(
+                "indexnow_interval",
+                "1"
+            )
+
+            interval_minutes = int(interval)
+
+            if interval_minutes < 1:
+                interval_minutes = 1
+
+            interval_ms = interval_minutes * 60 * 1000
+
+            self.automation_timer.setInterval(
+                interval_ms
+            )
+
+            print(
+                f"Intervalo de automatización: "
+                f"{interval_minutes} minuto(s)"
+            )
+
+        except Exception as error:
+
+            self.automation_timer.setInterval(
+                self.automation_service.INTERVAL_MS
+            )
+
+            print(
+                f"Error leyendo intervalo de automatización: {error}"
+            )
 
     def run_automation(self):
 

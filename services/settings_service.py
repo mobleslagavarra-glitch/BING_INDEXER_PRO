@@ -6,6 +6,7 @@ class SettingsService:
     DEFAULTS = {
         "indexnow_auto": "0",
         "indexnow_retries": "3",
+        "indexnow_interval": "1",
     }
 
     def __init__(self):

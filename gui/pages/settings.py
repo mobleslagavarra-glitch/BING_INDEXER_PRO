@@ -69,6 +69,22 @@ class SettingsPage(QWidget):
 
         indexnow_layout.addWidget(self.chk_auto)
 
+        intervalo_layout = QHBoxLayout()
+
+        lbl_intervalo = QLabel(
+            "Intervalo de automatización (minutos):"
+        )
+
+        self.spin_interval = QSpinBox()
+        self.spin_interval.setMinimum(1)
+        self.spin_interval.setMaximum(1440)
+
+        intervalo_layout.addWidget(lbl_intervalo)
+        intervalo_layout.addWidget(self.spin_interval)
+        intervalo_layout.addStretch()
+
+        indexnow_layout.addLayout(intervalo_layout)
+
         reintentos_layout = QHBoxLayout()
 
         lbl_reintentos = QLabel(
@@ -145,6 +161,11 @@ class SettingsPage(QWidget):
                 "0"
             )
 
+            interval = self.settings_service.get(
+                "indexnow_interval",
+                "1"
+            )
+
             retries = self.settings_service.get(
                 "indexnow_retries",
                 "3"
@@ -152,6 +173,10 @@ class SettingsPage(QWidget):
 
             self.chk_auto.setChecked(
                 str(auto) == "1"
+            )
+
+            self.spin_interval.setValue(
+                int(interval)
             )
 
             self.spin_retries.setValue(
@@ -176,6 +201,10 @@ class SettingsPage(QWidget):
                 else "0"
             )
 
+            interval = str(
+                self.spin_interval.value()
+            )
+
             retries = str(
                 self.spin_retries.value()
             )
@@ -183,6 +212,11 @@ class SettingsPage(QWidget):
             self.settings_service.set(
                 "indexnow_auto",
                 auto
+            )
+
+            self.settings_service.set(
+                "indexnow_interval",
+                interval
             )
 
             self.settings_service.set(
