@@ -48,7 +48,16 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(UrlsPage())
         self.stack.addWidget(IndexNowPage())
         self.stack.addWidget(HistoryPage())
-        self.stack.addWidget(SettingsPage())
+
+        self.settings_page = SettingsPage()
+
+        self.stack.addWidget(
+            self.settings_page
+        )
+
+        self.settings_page.settings_saved.connect(
+            self.update_automation_interval
+        )
 
         self.navigation.currentRowChanged.connect(
             self.stack.setCurrentIndex

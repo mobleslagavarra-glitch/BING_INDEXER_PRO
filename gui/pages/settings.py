@@ -10,11 +10,15 @@
     QMessageBox,
 )
 
+from PySide6.QtCore import Signal
+
 from core.version import Version
 from services.settings_service import SettingsService
 
 
 class SettingsPage(QWidget):
+
+    settings_saved = Signal()
 
     def __init__(self):
         super().__init__()
@@ -223,6 +227,8 @@ class SettingsPage(QWidget):
                 "indexnow_retries",
                 retries
             )
+
+            self.settings_saved.emit()
 
             QMessageBox.information(
                 self,
