@@ -2,6 +2,7 @@ from repositories.url_repository import UrlRepository
 from repositories.domain_repository import DomainRepository
 from services.history_service import HistoryService
 from services.indexnow_service import IndexNowService
+from services.settings_service import SettingsService
 
 
 class IndexerService:
@@ -11,6 +12,7 @@ class IndexerService:
         self.domain_repository = DomainRepository()
         self.history_service = HistoryService()
         self.indexnow_service = IndexNowService()
+        self.settings_service = SettingsService()
 
     def index_url(self, url_id):
 
@@ -41,7 +43,6 @@ class IndexerService:
                 "El dominio no tiene una API key configurada"
             )
 
-        # Marcar como procesando
         url_record.status = "PROCESANDO"
         url_record.response_code = None
         url_record.response_message = ""
@@ -139,12 +140,30 @@ class IndexerService:
 
         results = []
 
+        try:
+            retries = int(
+                self.settings_service.get(
+                    "indexnow_retries",
+                    "3"
+                )
+            )
+        except (TypeError, ValueError):
+            retries = 3
+
+        if retries < 0:
+            retries = 0
+
+        if retries > 10:
+            retries = 10
+
         for url_record in urls:
 
             if url_record.status != "PENDIENTE":
                 continue
 
-            try:
+            attempts = retries + 1
+
+            for attempt in range(1, attempts + 1):
 
                 result = self.index_url(
                     url_record.id
@@ -152,24 +171,17 @@ class IndexerService:
 
                 results.append(result)
 
-            except Exception as error:
+                if result.status == "ENVIADA":
+                    break
 
-                url_record.status = "ERROR"
-                url_record.response_code = None
-                url_record.response_message = str(error)
+                if attempt < attempts:
 
-                self.url_repository.update(
-                    url_record
-                )
-
-                self.history_service.add(
-                    "INDEXACION_ERROR",
-                    (
-                        f"Error indexando "
-                        f"{url_record.url}: {error}"
+                    self.history_service.add(
+                        "INDEXACION_REINTENTO",
+                        (
+                            f"Reintento {attempt} de {retries} "
+                            f"para: {url_record.url}"
+                        )
                     )
-                )
-
-                results.append(url_record)
 
         return results
