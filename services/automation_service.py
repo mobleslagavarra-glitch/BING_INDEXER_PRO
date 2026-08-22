@@ -1,4 +1,6 @@
-﻿from services.indexer_service import IndexerService
+﻿from datetime import datetime
+
+from services.indexer_service import IndexerService
 from services.settings_service import SettingsService
 
 
@@ -9,6 +11,11 @@ class AutomationService:
     def __init__(self):
         self.indexer_service = IndexerService()
         self.settings_service = SettingsService()
+
+        self.last_run = None
+        self.processed_count = 0
+        self.success_count = 0
+        self.error_count = 0
 
     def is_enabled(self):
         value = self.settings_service.get(
@@ -23,4 +30,22 @@ class AutomationService:
         if not self.is_enabled():
             return []
 
-        return self.indexer_service.index_pending_urls()
+        results = self.indexer_service.index_pending_urls()
+
+        self.last_run = datetime.now()
+
+        self.processed_count = len(results)
+
+        self.success_count = sum(
+            1
+            for result in results
+            if result.status == "ENVIADA"
+        )
+
+        self.error_count = sum(
+            1
+            for result in results
+            if result.status == "ERROR"
+        )
+
+        return results
