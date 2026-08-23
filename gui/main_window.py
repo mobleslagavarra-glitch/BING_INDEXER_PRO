@@ -80,13 +80,11 @@ class MainWindow(QMainWindow):
 
         self.automation_timer = QTimer(self)
 
-        self.update_automation_interval()
-
         self.automation_timer.timeout.connect(
             self.run_automation
         )
 
-        self.automation_timer.start()
+        self.update_automation_interval()
 
     def update_automation_interval(self):
 
@@ -108,10 +106,24 @@ class MainWindow(QMainWindow):
                 interval_ms
             )
 
-            print(
-                f"Intervalo de automatización: "
-                f"{interval_minutes} minuto(s)"
-            )
+            if self.automation_service.is_enabled():
+
+                if not self.automation_timer.isActive():
+                    self.automation_timer.start()
+
+                print(
+                    f"Automatización ACTIVADA - "
+                    f"intervalo: {interval_minutes} minuto(s)"
+                )
+
+            else:
+
+                if self.automation_timer.isActive():
+                    self.automation_timer.stop()
+
+                print(
+                    "Automatización DESACTIVADA"
+                )
 
         except Exception as error:
 
