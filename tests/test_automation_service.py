@@ -122,3 +122,24 @@ def test_automation_counts_errors(monkeypatch):
     assert service.processed_count == 3
     assert service.success_count == 1
     assert service.error_count == 2
+def test_automation_counts_mixed_results(monkeypatch):
+
+    results = [
+        create_url("ERROR"),
+        create_url("ERROR"),
+        create_url("ENVIADA"),
+    ]
+
+    service, indexer_service = create_service(
+        monkeypatch,
+        results
+    )
+
+    returned = service.run()
+
+    assert returned == results
+    assert indexer_service.calls == 1
+    assert service.last_run is not None
+    assert service.processed_count == 3
+    assert service.success_count == 1
+    assert service.error_count == 2
