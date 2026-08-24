@@ -2,6 +2,7 @@
 
 from services.indexer_service import IndexerService
 from services.settings_service import SettingsService
+from services.history_service import HistoryService
 
 
 class AutomationService:
@@ -11,6 +12,7 @@ class AutomationService:
     def __init__(self):
         self.indexer_service = IndexerService()
         self.settings_service = SettingsService()
+        self.history_service = HistoryService()
 
         self.last_run = None
         self.processed_count = 0
@@ -47,5 +49,17 @@ class AutomationService:
             for result in results
             if result.status == "ERROR"
         )
+
+        if results:
+
+            self.history_service.add(
+                "AUTOMATIZACION_EJECUTADA",
+                (
+                    "Ejecución automática de IndexNow: "
+                    f"procesadas: {self.processed_count} | "
+                    f"correctas: {self.success_count} | "
+                    f"errores: {self.error_count}"
+                )
+            )
 
         return results

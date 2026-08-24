@@ -25,10 +25,37 @@ class FakeSettingsService:
         return default
 
 
-def create_service(monkeypatch, results, enabled=True):
+class FakeHistoryService:
 
-    indexer_service = FakeIndexerService(results)
-    settings_service = FakeSettingsService(enabled)
+    def __init__(self):
+        self.events = []
+
+    def add(self, event_type, description):
+        self.events.append(
+            (
+                event_type,
+                description
+            )
+        )
+
+        return len(self.events)
+
+
+def create_service(
+    monkeypatch,
+    results,
+    enabled=True
+):
+
+    indexer_service = FakeIndexerService(
+        results
+    )
+
+    settings_service = FakeSettingsService(
+        enabled
+    )
+
+    history_service = FakeHistoryService()
 
     monkeypatch.setattr(
         "services.automation_service.IndexerService",
@@ -40,11 +67,17 @@ def create_service(monkeypatch, results, enabled=True):
         lambda: settings_service
     )
 
+    monkeypatch.setattr(
+        "services.automation_service.HistoryService",
+        lambda: history_service
+    )
+
     service = AutomationService()
 
     return (
         service,
-        indexer_service
+        indexer_service,
+        history_service
     )
 
 
@@ -60,7 +93,7 @@ def create_url(status):
 
 def test_automation_disabled(monkeypatch):
 
-    service, indexer_service = create_service(
+    service, indexer_service, history_service = create_service(
         monkeypatch,
         [
             create_url("ENVIADA")
@@ -72,6 +105,7 @@ def test_automation_disabled(monkeypatch):
 
     assert results == []
     assert indexer_service.calls == 0
+    assert history_service.events == []
     assert service.last_run is None
     assert service.processed_count == 0
     assert service.success_count == 0
@@ -86,7 +120,7 @@ def test_automation_counts_successes(monkeypatch):
         create_url("ENVIADA")
     ]
 
-    service, indexer_service = create_service(
+    service, indexer_service, history_service = create_service(
         monkeypatch,
         results
     )
@@ -100,6 +134,18 @@ def test_automation_counts_successes(monkeypatch):
     assert service.success_count == 3
     assert service.error_count == 0
 
+    assert len(history_service.events) == 1
+    assert history_service.events[0][0] == (
+        "AUTOMATIZACION_EJECUTADA"
+    )
+
+    assert history_service.events[0][1] == (
+        "Ejecución automática de IndexNow: "
+        "procesadas: 3 | "
+        "correctas: 3 | "
+        "errores: 0"
+    )
+
 
 def test_automation_counts_errors(monkeypatch):
 
@@ -109,7 +155,7 @@ def test_automation_counts_errors(monkeypatch):
         create_url("ERROR")
     ]
 
-    service, indexer_service = create_service(
+    service, indexer_service, history_service = create_service(
         monkeypatch,
         results
     )
@@ -122,6 +168,20 @@ def test_automation_counts_errors(monkeypatch):
     assert service.processed_count == 3
     assert service.success_count == 1
     assert service.error_count == 2
+
+    assert len(history_service.events) == 1
+    assert history_service.events[0][0] == (
+        "AUTOMATIZACION_EJECUTADA"
+    )
+
+    assert history_service.events[0][1] == (
+        "Ejecución automática de IndexNow: "
+        "procesadas: 3 | "
+        "correctas: 1 | "
+        "errores: 2"
+    )
+
+
 def test_automation_counts_mixed_results(monkeypatch):
 
     results = [
@@ -130,7 +190,7 @@ def test_automation_counts_mixed_results(monkeypatch):
         create_url("ENVIADA"),
     ]
 
-    service, indexer_service = create_service(
+    service, indexer_service, history_service = create_service(
         monkeypatch,
         results
     )
@@ -143,3 +203,26 @@ def test_automation_counts_mixed_results(monkeypatch):
     assert service.processed_count == 3
     assert service.success_count == 1
     assert service.error_count == 2
+
+    assert len(history_service.events) == 1
+    assert history_service.events[0][0] == (
+        "AUTOMATIZACION_EJECUTADA"
+    )
+
+
+def test_automation_without_pending_urls(monkeypatch):
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        []
+    )
+
+    results = service.run()
+
+    assert results == []
+    assert indexer_service.calls == 1
+    assert history_service.events == []
+    assert service.last_run is not None
+    assert service.processed_count == 0
+    assert service.success_count == 0
+    assert service.error_count == 0
