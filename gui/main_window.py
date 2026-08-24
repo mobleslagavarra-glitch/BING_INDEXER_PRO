@@ -44,7 +44,9 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget()
 
-        self.stack.addWidget(DashboardPage())
+        self.dashboard_page = DashboardPage()
+        self.stack.addWidget(self.dashboard_page)
+
         self.stack.addWidget(DomainsPage())
         self.stack.addWidget(UrlsPage())
         self.stack.addWidget(IndexNowPage())
@@ -112,13 +114,9 @@ class MainWindow(QMainWindow):
                 if not self.automation_timer.isActive():
                     self.automation_timer.start()
 
-                self.status_bar.update_automation_status(
+                self.update_automation_display(
                     True,
-                    interval_minutes,
-                    self.automation_service.last_run,
-                    self.automation_service.processed_count,
-                    self.automation_service.success_count,
-                    self.automation_service.error_count
+                    interval_minutes
                 )
 
                 print(
@@ -131,7 +129,7 @@ class MainWindow(QMainWindow):
                 if self.automation_timer.isActive():
                     self.automation_timer.stop()
 
-                self.status_bar.update_automation_status(
+                self.update_automation_display(
                     False,
                     interval_minutes
                 )
@@ -150,6 +148,30 @@ class MainWindow(QMainWindow):
                 f"Error leyendo intervalo de automatización: {error}"
             )
 
+    def update_automation_display(
+        self,
+        enabled,
+        interval_minutes
+    ):
+
+        self.status_bar.update_automation_status(
+            enabled,
+            interval_minutes,
+            self.automation_service.last_run,
+            self.automation_service.processed_count,
+            self.automation_service.success_count,
+            self.automation_service.error_count
+        )
+
+        self.dashboard_page.update_automation_status(
+            enabled,
+            interval_minutes,
+            self.automation_service.last_run,
+            self.automation_service.processed_count,
+            self.automation_service.success_count,
+            self.automation_service.error_count
+        )
+
     def run_automation(self):
 
         try:
@@ -161,14 +183,12 @@ class MainWindow(QMainWindow):
                 "1"
             )
 
-            self.status_bar.update_automation_status(
+            self.update_automation_display(
                 self.automation_service.is_enabled(),
-                int(interval),
-                self.automation_service.last_run,
-                self.automation_service.processed_count,
-                self.automation_service.success_count,
-                self.automation_service.error_count
+                int(interval)
             )
+
+            self.dashboard_page.load_statistics()
 
         except Exception as error:
 

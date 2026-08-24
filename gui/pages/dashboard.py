@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+﻿from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -38,12 +38,90 @@ class DashboardPage(QWidget):
 
         layout.addLayout(self.cards_layout)
 
-        self.btn_refresh = QPushButton("🔄 Actualizar")
+        automation_frame = QFrame()
+        automation_frame.setFrameShape(
+            QFrame.Shape.StyledPanel
+        )
+
+        automation_layout = QVBoxLayout(
+            automation_frame
+        )
+
+        automation_title = QLabel(
+            "⚙️ Automatización IndexNow"
+        )
+
+        automation_title.setStyleSheet(
+            "font-size: 18px; font-weight: bold;"
+        )
+
+        automation_layout.addWidget(
+            automation_title
+        )
+
+        self.lbl_automation_status = QLabel(
+            "Estado: DESACTIVADA"
+        )
+
+        self.lbl_automation_interval = QLabel(
+            "Intervalo: -"
+        )
+
+        self.lbl_automation_last_run = QLabel(
+            "Última ejecución: pendiente"
+        )
+
+        self.lbl_automation_processed = QLabel(
+            "Procesadas: 0"
+        )
+
+        self.lbl_automation_success = QLabel(
+            "Correctas: 0"
+        )
+
+        self.lbl_automation_errors = QLabel(
+            "Errores: 0"
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_status
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_interval
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_last_run
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_processed
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_success
+        )
+
+        automation_layout.addWidget(
+            self.lbl_automation_errors
+        )
+
+        layout.addWidget(
+            automation_frame
+        )
+
+        self.btn_refresh = QPushButton(
+            "🔄 Actualizar"
+        )
+
         self.btn_refresh.clicked.connect(
             self.load_statistics
         )
 
-        layout.addWidget(self.btn_refresh)
+        layout.addWidget(
+            self.btn_refresh
+        )
 
         layout.addStretch()
 
@@ -77,6 +155,58 @@ class DashboardPage(QWidget):
         self.cards_layout.addWidget(frame)
 
         return value_label
+
+    def update_automation_status(
+        self,
+        enabled,
+        interval_minutes,
+        last_run=None,
+        processed=0,
+        success=0,
+        errors=0
+    ):
+
+        if enabled:
+
+            self.lbl_automation_status.setText(
+                "Estado: ACTIVA"
+            )
+
+        else:
+
+            self.lbl_automation_status.setText(
+                "Estado: DESACTIVADA"
+            )
+
+        self.lbl_automation_interval.setText(
+            f"Intervalo: {interval_minutes} minuto(s)"
+        )
+
+        if last_run is None:
+
+            ultima = "pendiente"
+
+        else:
+
+            ultima = last_run.strftime(
+                "%H:%M:%S"
+            )
+
+        self.lbl_automation_last_run.setText(
+            f"Última ejecución: {ultima}"
+        )
+
+        self.lbl_automation_processed.setText(
+            f"Procesadas: {processed}"
+        )
+
+        self.lbl_automation_success.setText(
+            f"Correctas: {success}"
+        )
+
+        self.lbl_automation_errors.setText(
+            f"Errores: {errors}"
+        )
 
     def load_statistics(self):
 
