@@ -39,7 +39,8 @@ class MainWindow(QMainWindow):
 
         MainMenu(self)
 
-        self.setStatusBar(StatusBar())
+        self.status_bar = StatusBar()
+        self.setStatusBar(self.status_bar)
 
         self.stack = QStackedWidget()
 
@@ -111,6 +112,15 @@ class MainWindow(QMainWindow):
                 if not self.automation_timer.isActive():
                     self.automation_timer.start()
 
+                self.status_bar.update_automation_status(
+                    True,
+                    interval_minutes,
+                    self.automation_service.last_run,
+                    self.automation_service.processed_count,
+                    self.automation_service.success_count,
+                    self.automation_service.error_count
+                )
+
                 print(
                     f"Automatización ACTIVADA - "
                     f"intervalo: {interval_minutes} minuto(s)"
@@ -120,6 +130,11 @@ class MainWindow(QMainWindow):
 
                 if self.automation_timer.isActive():
                     self.automation_timer.stop()
+
+                self.status_bar.update_automation_status(
+                    False,
+                    interval_minutes
+                )
 
                 print(
                     "Automatización DESACTIVADA"
@@ -140,6 +155,20 @@ class MainWindow(QMainWindow):
         try:
 
             self.automation_service.run()
+
+            interval = self.settings_service.get(
+                "indexnow_interval",
+                "1"
+            )
+
+            self.status_bar.update_automation_status(
+                self.automation_service.is_enabled(),
+                int(interval),
+                self.automation_service.last_run,
+                self.automation_service.processed_count,
+                self.automation_service.success_count,
+                self.automation_service.error_count
+            )
 
         except Exception as error:
 
