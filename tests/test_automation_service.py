@@ -221,7 +221,19 @@ def test_automation_without_pending_urls(monkeypatch):
 
     assert results == []
     assert indexer_service.calls == 1
-    assert history_service.events == []
+    assert len(history_service.events) == 1
+
+    assert history_service.events[0][0] == (
+        "AUTOMATIZACION_EJECUTADA"
+    )
+
+    assert history_service.events[0][1] == (
+        "Ejecución automática de IndexNow: "
+        "procesadas: 0 | "
+        "correctas: 0 | "
+        "errores: 0"
+    )
+
     assert service.last_run is not None
     assert service.processed_count == 0
     assert service.success_count == 0
