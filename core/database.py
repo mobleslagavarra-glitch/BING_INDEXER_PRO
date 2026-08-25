@@ -67,10 +67,42 @@ def initialize_database():
 
             event_type TEXT NOT NULL,
 
-            description TEXT NOT NULL
+            description TEXT NOT NULL,
+
+            processed_count INTEGER DEFAULT 0,
+
+            success_count INTEGER DEFAULT 0,
+
+            error_count INTEGER DEFAULT 0
 
         )
     """)
+
+    # Migración de bases de datos existentes
+    cursor.execute("PRAGMA table_info(history)")
+
+    history_columns = {
+        row[1]
+        for row in cursor.fetchall()
+    }
+
+    if "processed_count" not in history_columns:
+        cursor.execute("""
+            ALTER TABLE history
+            ADD COLUMN processed_count INTEGER DEFAULT 0
+        """)
+
+    if "success_count" not in history_columns:
+        cursor.execute("""
+            ALTER TABLE history
+            ADD COLUMN success_count INTEGER DEFAULT 0
+        """)
+
+    if "error_count" not in history_columns:
+        cursor.execute("""
+            ALTER TABLE history
+            ADD COLUMN error_count INTEGER DEFAULT 0
+        """)
 
     # Tabla de configuración
     cursor.execute("""
