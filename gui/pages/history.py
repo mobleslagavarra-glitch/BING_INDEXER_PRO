@@ -14,15 +14,30 @@ from services.history_service import HistoryService
 
 class HistoryPage(QWidget):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
 
         self.service = HistoryService()
 
-        layout = QVBoxLayout()
+        self.setup_ui()
+        self.load_history()
+
+    def setup_ui(self):
+
+        layout = QVBoxLayout(self)
 
         titulo = QLabel("Historial")
+        titulo.setStyleSheet(
+            "font-size: 22px; font-weight: bold;"
+        )
+
         layout.addWidget(titulo)
+
+        info = QLabel(
+            "Registro de las operaciones realizadas por BING_INDEXER_PRO."
+        )
+
+        layout.addWidget(info)
 
         self.table = QTableWidget()
         self.table.setColumnCount(7)
@@ -45,33 +60,47 @@ class HistoryPage(QWidget):
             QTableWidget.SelectionBehavior.SelectRows
         )
 
+        self.table.setSelectionMode(
+            QTableWidget.SelectionMode.SingleSelection
+        )
+
         self.table.setAlternatingRowColors(True)
 
         layout.addWidget(self.table)
 
         botones = QHBoxLayout()
 
-        self.btn_refresh = QPushButton("Actualizar")
+        self.btn_clear = QPushButton(
+            "Limpiar historial"
+        )
 
+        self.btn_refresh = QPushButton(
+            "Actualizar"
+        )
+
+        botones.addWidget(self.btn_clear)
         botones.addStretch()
         botones.addWidget(self.btn_refresh)
 
         layout.addLayout(botones)
 
-        self.setLayout(layout)
-
         self.btn_refresh.clicked.connect(
             self.load_history
         )
 
-        self.load_history()
+        self.btn_clear.clicked.connect(
+            self.clear_history
+        )
 
     def load_history(self):
 
         try:
+
             history = self.service.get_all()
 
-            self.table.setRowCount(len(history))
+            self.table.setRowCount(
+                len(history)
+            )
 
             for row, event in enumerate(history):
 
@@ -83,47 +112,25 @@ class HistoryPage(QWidget):
                 success_count = event[5]
                 error_count = event[6]
 
-                self.table.setItem(
-                    row,
-                    0,
-                    QTableWidgetItem(str(event_id))
-                )
+                values = [
+                    event_id,
+                    event_date,
+                    event_type,
+                    description,
+                    processed_count,
+                    success_count,
+                    error_count,
+                ]
 
-                self.table.setItem(
-                    row,
-                    1,
-                    QTableWidgetItem(str(event_date))
-                )
+                for column, value in enumerate(values):
 
-                self.table.setItem(
-                    row,
-                    2,
-                    QTableWidgetItem(str(event_type))
-                )
-
-                self.table.setItem(
-                    row,
-                    3,
-                    QTableWidgetItem(str(description))
-                )
-
-                self.table.setItem(
-                    row,
-                    4,
-                    QTableWidgetItem(str(processed_count))
-                )
-
-                self.table.setItem(
-                    row,
-                    5,
-                    QTableWidgetItem(str(success_count))
-                )
-
-                self.table.setItem(
-                    row,
-                    6,
-                    QTableWidgetItem(str(error_count))
-                )
+                    self.table.setItem(
+                        row,
+                        column,
+                        QTableWidgetItem(
+                            str(value)
+                        )
+                    )
 
             self.table.resizeColumnsToContents()
 
@@ -140,5 +147,62 @@ class HistoryPage(QWidget):
             QMessageBox.critical(
                 self,
                 "Error",
-                f"No se pudo cargar el historial:\n\n{error}"
+                (
+                    "No se pudo cargar el historial:"
+                    f"\n\n{error}"
+                )
+            )
+
+    def clear_history(self):
+
+        if self.table.rowCount() == 0:
+
+            QMessageBox.information(
+                self,
+                "Historial",
+                "El historial ya está vacío."
+            )
+
+            return
+
+        respuesta = QMessageBox.question(
+            self,
+            "Limpiar historial",
+            (
+                "¿Estás seguro de que quieres "
+                "eliminar todo el historial?\n\n"
+                "Esta acción no se puede deshacer."
+            ),
+            QMessageBox.StandardButton.Yes
+            | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+
+        try:
+
+            deleted = self.service.clear()
+
+            self.load_history()
+
+            QMessageBox.information(
+                self,
+                "Historial",
+                (
+                    f"Se han eliminado {deleted} "
+                    "registro(s) del historial."
+                )
+            )
+
+        except Exception as error:
+
+            QMessageBox.critical(
+                self,
+                "Error",
+                (
+                    "No se pudo limpiar el historial:"
+                    f"\n\n{error}"
+                )
             )
