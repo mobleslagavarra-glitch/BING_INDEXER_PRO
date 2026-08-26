@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -268,13 +268,10 @@ class IndexNowPage(QWidget):
 
             return
 
-        # Normalizar la URL antes de enviarla.
         normalized_url = self.url_service._normalize_url(
             url_record.url
         )
 
-        # Si la URL estaba guardada en formato Markdown,
-        # actualizar también el registro de la base de datos.
         if normalized_url != url_record.url:
             url_record.url = normalized_url
             self.url_service.update_url(
@@ -313,7 +310,10 @@ class IndexNowPage(QWidget):
                     (
                         f"URL enviada correctamente: "
                         f"{normalized_url}"
-                    )
+                    ),
+                    1,
+                    1,
+                    0
                 )
 
                 QMessageBox.information(
@@ -352,7 +352,10 @@ class IndexNowPage(QWidget):
                     f"Error al enviar URL: "
                     f"{normalized_url} - "
                     f"{url_record.response_message}"
-                )
+                ),
+                1,
+                0,
+                1
             )
 
             QMessageBox.warning(
@@ -368,6 +371,25 @@ class IndexNowPage(QWidget):
             self.load_urls()
 
         except Exception as error:
+
+            url_record.status = "ERROR"
+            url_record.response_code = None
+            url_record.response_message = str(error)
+
+            self.url_service.update_url(
+                url_record
+            )
+
+            self.history_service.add(
+                "ERROR_INDEXACION",
+                (
+                    f"Error al enviar URL: "
+                    f"{normalized_url} - {error}"
+                ),
+                1,
+                0,
+                1
+            )
 
             QMessageBox.critical(
                 self,
