@@ -57,7 +57,10 @@ class AutomationService:
                 f"procesadas: {self.processed_count} | "
                 f"correctas: {self.success_count} | "
                 f"errores: {self.error_count}"
-            )
+            ),
+            self.processed_count,
+            self.success_count,
+            self.error_count
         )
 
         return results

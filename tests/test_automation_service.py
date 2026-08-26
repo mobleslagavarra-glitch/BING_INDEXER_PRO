@@ -30,11 +30,21 @@ class FakeHistoryService:
     def __init__(self):
         self.events = []
 
-    def add(self, event_type, description):
+    def add(
+        self,
+        event_type,
+        description,
+        processed_count=0,
+        success_count=0,
+        error_count=0
+    ):
         self.events.append(
             (
                 event_type,
-                description
+                description,
+                processed_count,
+                success_count,
+                error_count
             )
         )
 
@@ -135,16 +145,21 @@ def test_automation_counts_successes(monkeypatch):
     assert service.error_count == 0
 
     assert len(history_service.events) == 1
-    assert history_service.events[0][0] == (
-        "AUTOMATIZACION_EJECUTADA"
-    )
 
-    assert history_service.events[0][1] == (
+    event = history_service.events[0]
+
+    assert event[0] == "AUTOMATIZACION_EJECUTADA"
+
+    assert event[1] == (
         "Ejecución automática de IndexNow: "
         "procesadas: 3 | "
         "correctas: 3 | "
         "errores: 0"
     )
+
+    assert event[2] == 3
+    assert event[3] == 3
+    assert event[4] == 0
 
 
 def test_automation_counts_errors(monkeypatch):
@@ -170,16 +185,21 @@ def test_automation_counts_errors(monkeypatch):
     assert service.error_count == 2
 
     assert len(history_service.events) == 1
-    assert history_service.events[0][0] == (
-        "AUTOMATIZACION_EJECUTADA"
-    )
 
-    assert history_service.events[0][1] == (
+    event = history_service.events[0]
+
+    assert event[0] == "AUTOMATIZACION_EJECUTADA"
+
+    assert event[1] == (
         "Ejecución automática de IndexNow: "
         "procesadas: 3 | "
         "correctas: 1 | "
         "errores: 2"
     )
+
+    assert event[2] == 3
+    assert event[3] == 1
+    assert event[4] == 2
 
 
 def test_automation_counts_mixed_results(monkeypatch):
@@ -205,9 +225,14 @@ def test_automation_counts_mixed_results(monkeypatch):
     assert service.error_count == 2
 
     assert len(history_service.events) == 1
-    assert history_service.events[0][0] == (
-        "AUTOMATIZACION_EJECUTADA"
-    )
+
+    event = history_service.events[0]
+
+    assert event[0] == "AUTOMATIZACION_EJECUTADA"
+
+    assert event[2] == 3
+    assert event[3] == 1
+    assert event[4] == 2
 
 
 def test_automation_without_pending_urls(monkeypatch):
@@ -223,16 +248,20 @@ def test_automation_without_pending_urls(monkeypatch):
     assert indexer_service.calls == 1
     assert len(history_service.events) == 1
 
-    assert history_service.events[0][0] == (
-        "AUTOMATIZACION_EJECUTADA"
-    )
+    event = history_service.events[0]
 
-    assert history_service.events[0][1] == (
+    assert event[0] == "AUTOMATIZACION_EJECUTADA"
+
+    assert event[1] == (
         "Ejecución automática de IndexNow: "
         "procesadas: 0 | "
         "correctas: 0 | "
         "errores: 0"
     )
+
+    assert event[2] == 0
+    assert event[3] == 0
+    assert event[4] == 0
 
     assert service.last_run is not None
     assert service.processed_count == 0
