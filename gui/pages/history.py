@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
 )
-
 
 from services.history_service import HistoryService
 
@@ -26,13 +25,16 @@ class HistoryPage(QWidget):
         layout.addWidget(titulo)
 
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
+        self.table.setColumnCount(7)
 
         self.table.setHorizontalHeaderLabels([
             "ID",
             "Fecha / Hora",
             "Tipo",
             "Descripción",
+            "Procesadas",
+            "Correctas",
+            "Errores",
         ])
 
         self.table.setEditTriggers(
@@ -77,6 +79,9 @@ class HistoryPage(QWidget):
                 event_date = event[1]
                 event_type = event[2]
                 description = event[3]
+                processed_count = event[4]
+                success_count = event[5]
+                error_count = event[6]
 
                 self.table.setItem(
                     row,
@@ -102,9 +107,33 @@ class HistoryPage(QWidget):
                     QTableWidgetItem(str(description))
                 )
 
+                self.table.setItem(
+                    row,
+                    4,
+                    QTableWidgetItem(str(processed_count))
+                )
+
+                self.table.setItem(
+                    row,
+                    5,
+                    QTableWidgetItem(str(success_count))
+                )
+
+                self.table.setItem(
+                    row,
+                    6,
+                    QTableWidgetItem(str(error_count))
+                )
+
             self.table.resizeColumnsToContents()
 
-            self.table.setColumnWidth(3, 600)
+            self.table.setColumnWidth(0, 60)
+            self.table.setColumnWidth(1, 150)
+            self.table.setColumnWidth(2, 180)
+            self.table.setColumnWidth(3, 400)
+            self.table.setColumnWidth(4, 90)
+            self.table.setColumnWidth(5, 90)
+            self.table.setColumnWidth(6, 90)
 
         except Exception as error:
 

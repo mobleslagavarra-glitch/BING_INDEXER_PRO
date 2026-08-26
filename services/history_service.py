@@ -1,4 +1,4 @@
-import sqlite3
+﻿import sqlite3
 
 from core.database import DB_FILE
 
@@ -8,7 +8,14 @@ class HistoryService:
     def get_connection(self):
         return sqlite3.connect(DB_FILE)
 
-    def add(self, event_type, description):
+    def add(
+        self,
+        event_type,
+        description,
+        processed_count=0,
+        success_count=0,
+        error_count=0
+    ):
         if not event_type:
             raise ValueError("El tipo de evento es obligatorio")
 
@@ -23,12 +30,18 @@ class HistoryService:
             cursor.execute("""
                 INSERT INTO history (
                     event_type,
-                    description
+                    description,
+                    processed_count,
+                    success_count,
+                    error_count
                 )
-                VALUES (?, ?)
+                VALUES (?, ?, ?, ?, ?)
             """, (
                 event_type,
-                description
+                description,
+                processed_count,
+                success_count,
+                error_count
             ))
 
             conn.commit()
@@ -49,7 +62,10 @@ class HistoryService:
                     id,
                     event_date,
                     event_type,
-                    description
+                    description,
+                    processed_count,
+                    success_count,
+                    error_count
                 FROM history
                 ORDER BY id DESC
             """)
