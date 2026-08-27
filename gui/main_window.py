@@ -111,8 +111,15 @@ class MainWindow(QMainWindow):
 
             if self.automation_service.is_enabled():
 
-                if not self.automation_timer.isActive():
+                was_active = self.automation_timer.isActive()
+
+                if not was_active:
                     self.automation_timer.start()
+
+                    QTimer.singleShot(
+                        0,
+                        self.run_automation
+                    )
 
                 self.update_automation_display(
                     True,
