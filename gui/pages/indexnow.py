@@ -11,8 +11,7 @@
 
 from services.url_service import UrlService
 from services.domain_service import DomainService
-from services.indexnow_service import IndexNowService
-from services.history_service import HistoryService
+from services.indexer_service import IndexerService
 
 
 class IndexNowPage(QWidget):
@@ -22,13 +21,13 @@ class IndexNowPage(QWidget):
 
         self.url_service = UrlService()
         self.domain_service = DomainService()
-        self.indexnow_service = IndexNowService()
-        self.history_service = HistoryService()
+        self.indexer_service = IndexerService()
 
         self.setup_ui()
         self.load_urls()
 
     def setup_ui(self):
+
         layout = QVBoxLayout(self)
 
         title = QLabel("IndexNow")
@@ -186,6 +185,12 @@ class IndexNowPage(QWidget):
 
         self.table.resizeColumnsToContents()
 
+        self.table.setColumnWidth(0, 60)
+        self.table.setColumnWidth(1, 180)
+        self.table.setColumnWidth(2, 500)
+        self.table.setColumnWidth(3, 120)
+        self.table.setColumnWidth(4, 80)
+
         self.send_button.setEnabled(
             self.table.rowCount() > 0
         )
@@ -244,152 +249,52 @@ class IndexNowPage(QWidget):
 
             return
 
-        domain = self.domain_service.get_domain(
-            url_record.domain_id
-        )
-
-        if domain is None:
-
-            QMessageBox.critical(
-                self,
-                "Error",
-                "No se ha encontrado el dominio asociado."
-            )
-
-            return
-
-        if not domain.api_key:
-
-            QMessageBox.warning(
-                self,
-                "IndexNow",
-                "El dominio no tiene API Key configurada."
-            )
-
-            return
-
-        normalized_url = self.url_service._normalize_url(
-            url_record.url
-        )
-
-        if normalized_url != url_record.url:
-            url_record.url = normalized_url
-            self.url_service.update_url(
-                url_record
-            )
-
         try:
 
-            result = self.indexnow_service.submit(
-                domain.domain,
-                domain.api_key,
-                normalized_url
+            result = self.indexer_service.index_url(
+                url_id
             )
 
-            if result.get("success"):
-
-                url_record.status = "ENVIADA"
-
-                url_record.response_code = (
-                    result.get("status_code")
-                )
-
-                url_record.response_message = (
-                    result.get(
-                        "message",
-                        "Solicitud aceptada por IndexNow"
-                    )
-                )
-
-                self.url_service.update_url(
-                    url_record
-                )
-
-                self.history_service.add(
-                    "INDEXACION_COMPLETADA",
-                    (
-                        f"URL enviada correctamente: "
-                        f"{normalized_url}"
-                    ),
-                    1,
-                    1,
-                    0
-                )
+            if result.status == "ENVIADA":
 
                 QMessageBox.information(
                     self,
                     "IndexNow",
                     (
                         "La URL ha sido enviada "
-                        "correctamente a IndexNow."
+                        "correctamente a IndexNow.\n\n"
+                        f"URL: {result.url}\n"
+                        f"Código HTTP: {result.response_code}"
                     )
                 )
 
-                self.load_urls()
+            else:
 
-                return
-
-            url_record.status = "ERROR"
-
-            url_record.response_code = (
-                result.get("status_code")
-            )
-
-            url_record.response_message = (
-                result.get(
-                    "message",
-                    "Error al enviar la URL a IndexNow"
+                QMessageBox.warning(
+                    self,
+                    "IndexNow",
+                    (
+                        "IndexNow no ha podido aceptar "
+                        "la URL.\n\n"
+                        f"URL: {result.url}\n"
+                        f"Código: {result.response_code}\n"
+                        f"Mensaje: {result.response_message}"
+                    )
                 )
-            )
 
-            self.url_service.update_url(
-                url_record
-            )
+            self.load_urls()
 
-            self.history_service.add(
-                "ERROR_INDEXACION",
-                (
-                    f"Error al enviar URL: "
-                    f"{normalized_url} - "
-                    f"{url_record.response_message}"
-                ),
-                1,
-                0,
-                1
-            )
+        except ValueError as error:
 
             QMessageBox.warning(
                 self,
                 "IndexNow",
-                (
-                    "IndexNow ha rechazado la solicitud.\n\n"
-                    f"Código: {url_record.response_code}\n"
-                    f"Mensaje: {url_record.response_message}"
-                )
+                str(error)
             )
 
             self.load_urls()
 
         except Exception as error:
-
-            url_record.status = "ERROR"
-            url_record.response_code = None
-            url_record.response_message = str(error)
-
-            self.url_service.update_url(
-                url_record
-            )
-
-            self.history_service.add(
-                "ERROR_INDEXACION",
-                (
-                    f"Error al enviar URL: "
-                    f"{normalized_url} - {error}"
-                ),
-                1,
-                0,
-                1
-            )
 
             QMessageBox.critical(
                 self,
