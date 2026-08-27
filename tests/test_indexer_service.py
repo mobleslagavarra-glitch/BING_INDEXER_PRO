@@ -65,7 +65,12 @@ class FakeIndexNowService:
     def submit(self, host, key, url):
         self.calls += 1
 
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+
+        if isinstance(response, Exception):
+            raise response
+
+        return response
 
 
 class FakeSettingsService:
@@ -147,6 +152,107 @@ def create_service(monkeypatch, responses, retries=5):
         indexnow_service,
         history_service
     )
+
+
+def test_index_url_success_records_history(monkeypatch):
+
+    service, url_record, indexnow_service, history = (
+        create_service(
+            monkeypatch,
+            [
+                {
+                    "status_code": 202,
+                    "message": "Aceptado"
+                }
+            ]
+        )
+    )
+
+    result = service.index_url(
+        url_record.id
+    )
+
+    assert result.status == "ENVIADA"
+    assert result.response_code == 202
+    assert indexnow_service.calls == 1
+
+    event_types = [
+        entry[0]
+        for entry in history.entries
+    ]
+
+    assert event_types == [
+        "INDEXACION_INICIADA",
+        "INDEXACION_COMPLETADA"
+    ]
+
+
+def test_index_url_http_error_records_history(monkeypatch):
+
+    service, url_record, indexnow_service, history = (
+        create_service(
+            monkeypatch,
+            [
+                {
+                    "status_code": 500,
+                    "message": "Error del servidor"
+                }
+            ]
+        )
+    )
+
+    result = service.index_url(
+        url_record.id
+    )
+
+    assert result.status == "ERROR"
+    assert result.response_code == 500
+    assert indexnow_service.calls == 1
+
+    event_types = [
+        entry[0]
+        for entry in history.entries
+    ]
+
+    assert event_types == [
+        "INDEXACION_INICIADA",
+        "INDEXACION_ERROR"
+    ]
+
+    assert "HTTP 500" in history.entries[-1][1]
+
+
+def test_index_url_exception_records_history(monkeypatch):
+
+    service, url_record, indexnow_service, history = (
+        create_service(
+            monkeypatch,
+            [
+                RuntimeError("Error de conexión")
+            ]
+        )
+    )
+
+    result = service.index_url(
+        url_record.id
+    )
+
+    assert result.status == "ERROR"
+    assert result.response_code is None
+    assert result.response_message == "Error de conexión"
+    assert indexnow_service.calls == 1
+
+    event_types = [
+        entry[0]
+        for entry in history.entries
+    ]
+
+    assert event_types == [
+        "INDEXACION_INICIADA",
+        "INDEXACION_ERROR"
+    ]
+
+    assert "Error de conexión" in history.entries[-1][1]
 
 
 def test_retries_until_success(monkeypatch):
