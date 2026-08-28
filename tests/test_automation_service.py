@@ -267,3 +267,47 @@ def test_automation_without_pending_urls(monkeypatch):
     assert service.processed_count == 0
     assert service.success_count == 0
     assert service.error_count == 0
+
+def test_automation_blocks_concurrent_run(monkeypatch):
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        [
+            create_url("ENVIADA")
+        ]
+    )
+
+    service.is_running = True
+
+    results = service.run()
+
+    assert results == []
+    assert indexer_service.calls == 0
+    assert history_service.events == []
+    assert service.is_running is True
+
+
+def test_automation_releases_lock_after_error(monkeypatch):
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        []
+    )
+
+    def failing_index_pending_urls():
+        indexer_service.calls += 1
+        raise RuntimeError("Error de prueba")
+
+    indexer_service.index_pending_urls = (
+        failing_index_pending_urls
+    )
+
+    try:
+        service.run()
+        assert False, "Se esperaba RuntimeError"
+    except RuntimeError as error:
+        assert str(error) == "Error de prueba"
+
+    assert indexer_service.calls == 1
+    assert history_service.events == []
+    assert service.is_running is False

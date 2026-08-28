@@ -18,6 +18,7 @@ class AutomationService:
         self.processed_count = 0
         self.success_count = 0
         self.error_count = 0
+        self.is_running = False
 
     def is_enabled(self):
         value = self.settings_service.get(
@@ -32,35 +33,45 @@ class AutomationService:
         if not self.is_enabled():
             return []
 
-        results = self.indexer_service.index_pending_urls()
+        if self.is_running:
+            return []
 
-        self.last_run = datetime.now()
+        self.is_running = True
 
-        self.processed_count = len(results)
+        try:
 
-        self.success_count = sum(
-            1
-            for result in results
-            if result.status == "ENVIADA"
-        )
+            results = self.indexer_service.index_pending_urls()
 
-        self.error_count = sum(
-            1
-            for result in results
-            if result.status == "ERROR"
-        )
+            self.last_run = datetime.now()
 
-        self.history_service.add(
-            "AUTOMATIZACION_EJECUTADA",
-            (
-                "Ejecución automática de IndexNow: "
-                f"procesadas: {self.processed_count} | "
-                f"correctas: {self.success_count} | "
-                f"errores: {self.error_count}"
-            ),
-            self.processed_count,
-            self.success_count,
-            self.error_count
-        )
+            self.processed_count = len(results)
 
-        return results
+            self.success_count = sum(
+                1
+                for result in results
+                if result.status == "ENVIADA"
+            )
+
+            self.error_count = sum(
+                1
+                for result in results
+                if result.status == "ERROR"
+            )
+
+            self.history_service.add(
+                "AUTOMATIZACION_EJECUTADA",
+                (
+                    "Ejecución automática de IndexNow: "
+                    f"procesadas: {self.processed_count} | "
+                    f"correctas: {self.success_count} | "
+                    f"errores: {self.error_count}"
+                ),
+                self.processed_count,
+                self.success_count,
+                self.error_count
+            )
+
+            return results
+
+        finally:
+            self.is_running = False
