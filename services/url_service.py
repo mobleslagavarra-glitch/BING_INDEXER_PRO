@@ -83,9 +83,12 @@ class UrlService:
                 )
 
         url_record.url = url
-        url_record.response_message = (
-            url_record.response_message or ""
-        )
+
+        # Al modificar una URL, debe volver a quedar pendiente
+        # de indexación y limpiarse la respuesta anterior.
+        url_record.status = "PENDIENTE"
+        url_record.response_code = None
+        url_record.response_message = ""
 
         return self.repository.update(url_record)
 
