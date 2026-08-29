@@ -111,6 +111,36 @@ class UrlRepository:
         finally:
             conn.close()
 
+
+    def create_many(self, records):
+
+        if not records:
+            return 0
+
+        conn = self.get_connection()
+
+        try:
+
+            cursor = conn.cursor()
+
+            cursor.executemany("""
+                INSERT INTO urls (
+                    domain_id,
+                    url,
+                    status,
+                    response_code,
+                    response_message
+                )
+                VALUES (?, ?, ?, ?, ?)
+            """, records)
+
+            conn.commit()
+
+            return cursor.rowcount
+
+        finally:
+            conn.close()
+
     def update(self, url_record):
         if url_record.id is None:
             raise ValueError(
