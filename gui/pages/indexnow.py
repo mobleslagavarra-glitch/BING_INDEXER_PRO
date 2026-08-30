@@ -1,4 +1,4 @@
-﻿from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -128,12 +128,6 @@ class IndexNowPage(QWidget):
             if not domain.api_key:
                 continue
 
-            if url.status not in (
-                "PENDIENTE",
-                "ERROR",
-            ):
-                continue
-
             row = self.table.rowCount()
 
             self.table.insertRow(row)
@@ -245,6 +239,21 @@ class IndexNowPage(QWidget):
                 self,
                 "Error",
                 "No se ha encontrado la URL."
+            )
+
+            return
+
+        if url_record.status == "ENVIADA":
+
+            QMessageBox.information(
+                self,
+                "IndexNow",
+                (
+                    "Esta URL ya ha sido enviada correctamente "
+                    "a IndexNow.\n\n"
+                    f"URL: {url_record.url}\n"
+                    f"Código HTTP: {url_record.response_code}"
+                )
             )
 
             return
