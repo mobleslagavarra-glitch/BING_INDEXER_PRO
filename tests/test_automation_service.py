@@ -8,7 +8,7 @@ class FakeIndexerService:
         self.results = results
         self.calls = 0
 
-    def index_pending_urls(self):
+    def index_pending_urls_batch(self):
         self.calls += 1
         return self.results
 
@@ -268,6 +268,7 @@ def test_automation_without_pending_urls(monkeypatch):
     assert service.success_count == 0
     assert service.error_count == 0
 
+
 def test_automation_blocks_concurrent_run(monkeypatch):
 
     service, indexer_service, history_service = create_service(
@@ -294,12 +295,12 @@ def test_automation_releases_lock_after_error(monkeypatch):
         []
     )
 
-    def failing_index_pending_urls():
+    def failing_index_pending_urls_batch():
         indexer_service.calls += 1
         raise RuntimeError("Error de prueba")
 
-    indexer_service.index_pending_urls = (
-        failing_index_pending_urls
+    indexer_service.index_pending_urls_batch = (
+        failing_index_pending_urls_batch
     )
 
     try:
@@ -311,3 +312,25 @@ def test_automation_releases_lock_after_error(monkeypatch):
     assert indexer_service.calls == 1
     assert history_service.events == []
     assert service.is_running is False
+
+
+def test_automation_uses_batch_processing(monkeypatch):
+
+    results = [
+        create_url("ENVIADA"),
+        create_url("ENVIADA"),
+        create_url("ENVIADA"),
+    ]
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        results
+    )
+
+    returned = service.run()
+
+    assert returned == results
+    assert indexer_service.calls == 1
+    assert service.processed_count == 3
+    assert service.success_count == 3
+    assert service.error_count == 0

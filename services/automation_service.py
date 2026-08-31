@@ -40,7 +40,7 @@ class AutomationService:
 
         try:
 
-            results = self.indexer_service.index_pending_urls()
+            results = self.indexer_service.index_pending_urls_batch()
 
             self.last_run = datetime.now()
 
