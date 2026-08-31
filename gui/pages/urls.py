@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (
+﻿from PySide6.QtWidgets import (
     QWidget,
     QDialog,
     QVBoxLayout,
@@ -218,7 +218,7 @@ class UrlsPage(QWidget):
 
         try:
 
-            results = self.indexer_service.index_pending_urls()
+            results = self.indexer_service.index_pending_urls_batch()
 
             processed = len(results)
 
