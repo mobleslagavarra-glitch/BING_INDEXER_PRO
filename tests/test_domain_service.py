@@ -116,3 +116,153 @@ def test_delete_domain(monkeypatch):
 
     assert service.delete_domain(domain.id) is True
     assert service.get_domain(domain.id) is None
+def test_get_domains_returns_all_domains(monkeypatch):
+    service = create_service(monkeypatch)
+
+    first = service.add_domain("example.com")
+    second = service.add_domain("example.org")
+
+    domains = service.get_domains()
+
+    assert len(domains) == 2
+    assert domains[0].domain == "example.com"
+    assert domains[1].domain == "example.org"
+
+
+def test_get_domain_returns_domain(monkeypatch):
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain("example.com")
+
+    result = service.get_domain(domain.id)
+
+    assert result is domain
+
+
+def test_get_domain_without_id_fails(monkeypatch):
+    service = create_service(monkeypatch)
+
+    try:
+        service.get_domain(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID del dominio es obligatorio"
+
+
+def test_get_domain_missing_returns_none(monkeypatch):
+    service = create_service(monkeypatch)
+
+    assert service.get_domain(999) is None
+
+
+def test_add_domain_without_api_key_uses_empty_string(monkeypatch):
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain(
+        "example.com",
+        None,
+        True
+    )
+
+    assert domain.api_key == ""
+    assert domain.enabled is True
+
+
+def test_add_domain_disabled(monkeypatch):
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain(
+        "example.com",
+        "TEST_KEY",
+        False
+    )
+
+    assert domain.enabled is False
+
+
+def test_update_domain_requires_domain_object(monkeypatch):
+    service = create_service(monkeypatch)
+
+    try:
+        service.update_domain("example.com")
+        assert False
+    except TypeError as error:
+        assert str(error) == "Se esperaba un objeto Domain"
+
+
+def test_update_domain_requires_id(monkeypatch):
+    from models.domain import Domain
+
+    service = create_service(monkeypatch)
+
+    domain = Domain(
+        id=None,
+        domain="example.com",
+        api_key="TEST_KEY",
+        enabled=True
+    )
+
+    try:
+        service.update_domain(domain)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio debe tener un ID"
+
+
+def test_update_missing_domain_fails(monkeypatch):
+    from models.domain import Domain
+
+    service = create_service(monkeypatch)
+
+    domain = Domain(
+        id=999,
+        domain="example.com",
+        api_key="TEST_KEY",
+        enabled=True
+    )
+
+    try:
+        service.update_domain(domain)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio no existe"
+
+
+def test_update_duplicate_domain_fails(monkeypatch):
+    service = create_service(monkeypatch)
+
+    first = service.add_domain("example.com")
+    second = service.add_domain("example.org")
+
+    second.domain = "EXAMPLE.COM"
+
+    try:
+        service.update_domain(second)
+        assert False
+    except ValueError as error:
+        assert "ya existe" in str(error)
+
+    assert first.domain == "example.com"
+
+
+def test_update_empty_domain_fails(monkeypatch):
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain("example.com")
+    domain.domain = "   "
+
+    try:
+        service.update_domain(domain)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio no puede estar vacío"
+
+
+def test_delete_domain_without_id_fails(monkeypatch):
+    service = create_service(monkeypatch)
+
+    try:
+        service.delete_domain(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID del dominio es obligatorio"
