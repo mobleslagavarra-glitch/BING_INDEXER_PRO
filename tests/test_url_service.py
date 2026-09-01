@@ -220,3 +220,91 @@ def test_update_url_resets_indexing_status(monkeypatch):
     assert url.status == "PENDIENTE"
     assert url.response_code is None
     assert url.response_message == ""
+
+def test_get_urls(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    first = service.add_url(
+        1,
+        "https://example.com/uno"
+    )
+
+    second = service.add_url(
+        1,
+        "https://example.com/dos"
+    )
+
+    urls = service.get_urls()
+
+    assert len(urls) == 2
+    assert urls[0] == first
+    assert urls[1] == second
+
+
+def test_get_url(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    result = service.get_url(url.id)
+
+    assert result is url
+    assert result.id == url.id
+    assert result.url == "https://example.com/prueba"
+
+
+def test_get_url_without_id_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    try:
+        service.get_url(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID de la URL es obligatorio"
+
+
+def test_update_url_with_unknown_id_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = UrlRecord(
+        id=999,
+        domain_id=1,
+        url="https://example.com/prueba",
+        status="PENDIENTE"
+    )
+
+    try:
+        service.update_url(url)
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL no existe"
+
+
+def test_update_url_duplicate_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    first = service.add_url(
+        1,
+        "https://example.com/uno"
+    )
+
+    second = service.add_url(
+        1,
+        "https://example.com/dos"
+    )
+
+    second.url = first.url
+
+    try:
+        service.update_url(second)
+        assert False
+    except ValueError as error:
+        assert "ya existe" in str(error)
