@@ -22,6 +22,9 @@ class ExcelImportService:
 
         value = str(value).strip()
 
+        if not value or any(char.isspace() for char in value):
+            return ""
+
         if "://" not in value:
             value = "https://" + value
 
@@ -30,7 +33,21 @@ class ExcelImportService:
         if not parsed.hostname:
             return ""
 
-        return parsed.hostname.lower().rstrip(".")
+        hostname = parsed.hostname.lower().rstrip(".")
+
+        if not hostname:
+            return ""
+
+        if "." not in hostname:
+            return ""
+
+        if hostname.startswith(".") or hostname.endswith("."):
+            return ""
+
+        if ".." in hostname:
+            return ""
+
+        return hostname
 
     @staticmethod
     def normalize_url(value):

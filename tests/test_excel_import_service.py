@@ -434,3 +434,409 @@ def test_import_excel_ignores_empty_rows(
     assert result["duplicates"] == 0
     assert result["invalid"] == 0
     assert result["unknown_domains"] == 0
+
+def test_normalize_host_variants():
+    assert ExcelImportService.normalize_host("example.com") == "example.com"
+    assert ExcelImportService.normalize_host("https://example.com/") == "example.com"
+    assert ExcelImportService.normalize_host("http://EXAMPLE.COM/") == "example.com"
+    assert ExcelImportService.normalize_host("  https://Example.COM/path  ") == "example.com"
+    assert ExcelImportService.normalize_host("example.com.") == "example.com"
+
+
+def test_normalize_host_invalid_values():
+    assert ExcelImportService.normalize_host(None) == ""
+    assert ExcelImportService.normalize_host("") == ""
+    assert ExcelImportService.normalize_host("   ") == ""
+    assert ExcelImportService.normalize_host("https://") == ""
+
+
+def test_normalize_url_values():
+    assert ExcelImportService.normalize_url(None) == ""
+    assert ExcelImportService.normalize_url("") == ""
+    assert ExcelImportService.normalize_url("   ") == ""
+    assert (
+        ExcelImportService.normalize_url(
+            "  https://example.com/test  "
+        )
+        == "https://example.com/test"
+    )
+    assert ExcelImportService.normalize_url(123) == "123"
+
+
+def test_import_excel_url_column_with_spaces_and_uppercase(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["  URL  "])
+    worksheet.append(["https://example.com/prueba"])
+
+    workbook.save(file_path)
+
+    class Domain:
+        id = 1
+        domain = "example.com"
+        enabled = True
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return [Domain()]
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 1
+    assert result["invalid"] == 0
+    assert result["unknown_domains"] == 0
+
+
+def test_import_excel_url_column_not_first(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["Nombre", "URL", "Comentario"])
+    worksheet.append(
+        [
+            "Página 1",
+            "https://example.com/pagina-1",
+            "válida"
+        ]
+    )
+
+    workbook.save(file_path)
+
+    class Domain:
+        id = 1
+        domain = "example.com"
+        enabled = True
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return [Domain()]
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 1
+    assert result["invalid"] == 0
+    assert result["unknown_domains"] == 0
+
+
+def test_import_excel_invalid_urls(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["URL"])
+    worksheet.append(["https://example.com/valida"])
+    worksheet.append(["https://"])
+    worksheet.append(["   "])
+    worksheet.append(["not a valid url"])
+
+    workbook.save(file_path)
+
+    class Domain:
+        id = 1
+        domain = "example.com"
+        enabled = True
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return [Domain()]
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 1
+    assert result["invalid"] == 2
+    assert result["unknown_domains"] == 0
+
+
+def test_import_excel_unknown_domain(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["URL"])
+    worksheet.append(["https://unknown.com/pagina"])
+
+    workbook.save(file_path)
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return []
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 0
+    assert result["invalid"] == 0
+    assert result["unknown_domains"] == 1
+
+
+def test_import_excel_skips_rows_without_url_column_value(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["URL"])
+    worksheet.append([None])
+    worksheet.append([])
+    worksheet.append(["https://example.com/valida"])
+
+    workbook.save(file_path)
+
+    class Domain:
+        id = 1
+        domain = "example.com"
+        enabled = True
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return [Domain()]
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 1
+    assert result["duplicates"] == 0
+    assert result["invalid"] == 0
+    assert result["unknown_domains"] == 0
+
+
+def test_import_excel_existing_url_with_spaces_is_duplicate(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+
+    worksheet.append(["URL"])
+    worksheet.append(["https://example.com/existente"])
+
+    workbook.save(file_path)
+
+    class Domain:
+        id = 1
+        domain = "example.com"
+        enabled = True
+
+    class ExistingUrl:
+        url = "https://example.com/existente"
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return [Domain()]
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return [ExistingUrl()]
+
+        def create_many(self, records):
+            return len(records)
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 0
+    assert result["duplicates"] == 1
+    assert result["invalid"] == 0
+    assert result["unknown_domains"] == 0
+
+
+def test_import_excel_does_not_create_records_for_empty_import(
+    tmp_path,
+    monkeypatch
+):
+    file_path = tmp_path / "urls.xlsx"
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(["URL"])
+    worksheet.append(["https://unknown.com/pagina"])
+
+    workbook.save(file_path)
+
+    class FakeDomainRepository:
+
+        def get_all(self):
+            return []
+
+    class FakeUrlRepository:
+
+        def get_all(self):
+            return []
+
+        def create_many(self, records):
+            assert records == []
+            return 0
+
+    monkeypatch.setattr(
+        "services.excel_import_service.DomainRepository",
+        lambda: FakeDomainRepository()
+    )
+
+    monkeypatch.setattr(
+        "services.excel_import_service.UrlRepository",
+        lambda: FakeUrlRepository()
+    )
+
+    service = ExcelImportService()
+
+    result = service.import_file(str(file_path))
+
+    assert result["imported"] == 0
+    assert result["unknown_domains"] == 1
+
+def test_normalize_host_rejects_invalid_hosts():
+    assert ExcelImportService.normalize_host(
+        "not a valid url"
+    ) == ""
+
+    assert ExcelImportService.normalize_host(
+        "https://"
+    ) == ""
+
+    assert ExcelImportService.normalize_host(
+        "example..com"
+    ) == ""
+
+    assert ExcelImportService.normalize_host(
+        "example com"
+    ) == ""
