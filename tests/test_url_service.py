@@ -111,12 +111,34 @@ def test_add_url_creates_pending_url(monkeypatch):
     assert len(repository.urls) == 1
 
 
+def test_add_url_without_domain_id_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    try:
+        service.add_url(None, "https://example.com/prueba")
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID del dominio es obligatorio"
+
+
 def test_add_empty_url_fails(monkeypatch):
 
     service, _, _ = create_service(monkeypatch)
 
     try:
         service.add_url(1, "   ")
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL no puede estar vacía"
+
+
+def test_add_none_url_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    try:
+        service.add_url(1, None)
         assert False
     except ValueError as error:
         assert str(error) == "La URL no puede estar vacía"
@@ -169,6 +191,46 @@ def test_duplicate_url_fails(monkeypatch):
         assert "ya existe" in str(error)
 
 
+def test_duplicate_url_detection_ignores_case(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    service.add_url(
+        1,
+        "https://example.com/Prueba"
+    )
+
+    try:
+        service.add_url(
+            1,
+            "HTTPS://EXAMPLE.COM/PRUEBA"
+        )
+        assert False
+    except ValueError as error:
+        assert "ya existe" in str(error)
+
+
+def test_add_url_accepts_http(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    result = service.add_url(
+        1,
+        "http://example.com/prueba"
+    )
+
+    assert result.url == "http://example.com/prueba"
+
+
+def test_normalize_markdown_url():
+
+    result = UrlService._normalize_url(
+        "[Página de prueba](https://example.com/prueba)"
+    )
+
+    assert result == "Página de prueba"
+
+
 def test_update_url(monkeypatch):
 
     service, repository, _ = create_service(monkeypatch)
@@ -186,21 +248,9 @@ def test_update_url(monkeypatch):
     assert url.url == "https://example.com/nueva"
 
 
-def test_delete_url(monkeypatch):
-
-    service, _, _ = create_service(monkeypatch)
-
-    url = service.add_url(
-        1,
-        "https://example.com/prueba"
-    )
-
-    assert service.delete_url(url.id) is True
-    assert service.get_url(url.id) is None
-
 def test_update_url_resets_indexing_status(monkeypatch):
 
-    service, repository, _ = create_service(monkeypatch)
+    service, _, _ = create_service(monkeypatch)
 
     url = service.add_url(
         1,
@@ -210,7 +260,6 @@ def test_update_url_resets_indexing_status(monkeypatch):
     url.status = "ENVIADA"
     url.response_code = 202
     url.response_message = "Aceptado"
-
     url.url = "https://example.com/nueva"
 
     result = service.update_url(url)
@@ -221,52 +270,34 @@ def test_update_url_resets_indexing_status(monkeypatch):
     assert url.response_code is None
     assert url.response_message == ""
 
-def test_get_urls(monkeypatch):
+
+def test_update_url_without_id_fails(monkeypatch):
 
     service, _, _ = create_service(monkeypatch)
 
-    first = service.add_url(
-        1,
-        "https://example.com/uno"
+    url = UrlRecord(
+        id=None,
+        domain_id=1,
+        url="https://example.com/prueba",
+        status="PENDIENTE"
     )
 
-    second = service.add_url(
-        1,
-        "https://example.com/dos"
-    )
-
-    urls = service.get_urls()
-
-    assert len(urls) == 2
-    assert urls[0] == first
-    assert urls[1] == second
+    try:
+        service.update_url(url)
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL debe tener un ID"
 
 
-def test_get_url(monkeypatch):
-
-    service, _, _ = create_service(monkeypatch)
-
-    url = service.add_url(
-        1,
-        "https://example.com/prueba"
-    )
-
-    result = service.get_url(url.id)
-
-    assert result is url
-    assert result.id == url.id
-    assert result.url == "https://example.com/prueba"
-
-
-def test_get_url_without_id_fails(monkeypatch):
+def test_update_url_invalid_type_fails(monkeypatch):
 
     service, _, _ = create_service(monkeypatch)
 
     try:
-        service.get_url(None)
+        service.update_url("https://example.com/prueba")
         assert False
-    except ValueError as error:
-        assert str(error) == "El ID de la URL es obligatorio"
+    except TypeError as error:
+        assert str(error) == "Se esperaba un objeto UrlRecord"
 
 
 def test_update_url_with_unknown_id_fails(monkeypatch):
@@ -285,6 +316,60 @@ def test_update_url_with_unknown_id_fails(monkeypatch):
         assert False
     except ValueError as error:
         assert str(error) == "La URL no existe"
+
+
+def test_update_url_with_unknown_domain_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    url.domain_id = 999
+
+    try:
+        service.update_url(url)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio no existe"
+
+
+def test_update_url_empty_url_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    url.url = "   "
+
+    try:
+        service.update_url(url)
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL no puede estar vacía"
+
+
+def test_update_url_different_domain_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    url.url = "https://example.org/otra"
+
+    try:
+        service.update_url(url)
+        assert False
+    except ValueError as error:
+        assert "no pertenece al dominio seleccionado" in str(error)
 
 
 def test_update_url_duplicate_fails(monkeypatch):
@@ -308,3 +393,253 @@ def test_update_url_duplicate_fails(monkeypatch):
         assert False
     except ValueError as error:
         assert "ya existe" in str(error)
+
+
+def test_update_url_same_url_is_allowed(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    result = service.update_url(url)
+
+    assert result is True
+    assert url.url == "https://example.com/prueba"
+
+
+def test_delete_url(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    assert service.delete_url(url.id) is True
+    assert service.get_url(url.id) is None
+
+
+def test_delete_unknown_url_returns_false(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    assert service.delete_url(999) is False
+
+
+def test_delete_url_without_id_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    try:
+        service.delete_url(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID de la URL es obligatorio"
+
+
+def test_get_urls(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    first = service.add_url(
+        1,
+        "https://example.com/uno"
+    )
+
+    second = service.add_url(
+        1,
+        "https://example.com/dos"
+    )
+
+    urls = service.get_urls()
+
+    assert len(urls) == 2
+    assert urls[0] == first
+    assert urls[1] == second
+
+
+def test_get_urls_returns_empty_list(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    assert service.get_urls() == []
+
+
+def test_get_url(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    result = service.get_url(url.id)
+
+    assert result is url
+    assert result.id == url.id
+    assert result.url == "https://example.com/prueba"
+
+
+def test_get_unknown_url_returns_none(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    assert service.get_url(999) is None
+
+
+def test_get_url_without_id_fails(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    try:
+        service.get_url(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El ID de la URL es obligatorio"
+
+
+def test_normalize_url_none():
+
+    assert UrlService._normalize_url(None) == ""
+
+
+def test_normalize_url_strips_spaces():
+
+    assert (
+        UrlService._normalize_url(
+            "  https://example.com/prueba  "
+        )
+        == "https://example.com/prueba"
+    )
+
+
+def test_normalize_url_converts_value_to_string():
+
+    assert UrlService._normalize_url(12345) == "12345"
+
+
+def test_normalize_url_extracts_markdown_value():
+
+    result = UrlService._normalize_url(
+        "[Texto](https://example.com/prueba)"
+    )
+
+    assert result == "Texto"
+
+
+def test_normalize_url_invalid_markdown_is_preserved():
+
+    value = "[Texto sin cierre"
+
+    assert UrlService._normalize_url(value) == value
+
+
+def test_normalize_host_with_https():
+
+    assert (
+        UrlService._normalize_host(
+            "https://Example.COM/"
+        )
+        == "example.com"
+    )
+
+
+def test_normalize_host_with_http():
+
+    assert (
+        UrlService._normalize_host(
+            "http://Example.COM/"
+        )
+        == "example.com"
+    )
+
+
+def test_normalize_host_without_scheme():
+
+    assert (
+        UrlService._normalize_host(
+            "Example.COM/"
+        )
+        == "example.com"
+    )
+
+
+def test_normalize_host_with_trailing_dot():
+
+    assert (
+        UrlService._normalize_host(
+            "example.com."
+        )
+        == "example.com"
+    )
+
+
+def test_normalize_host_empty_value():
+
+    assert UrlService._normalize_host("") == ""
+
+
+def test_normalize_host_none():
+
+    assert UrlService._normalize_host(None) == ""
+
+
+def test_validate_url_domain_accepts_matching_domain():
+
+    UrlService._validate_url_domain(
+        "https://example.com/prueba",
+        "example.com"
+    )
+
+
+def test_validate_url_domain_accepts_case_difference():
+
+    UrlService._validate_url_domain(
+        "https://EXAMPLE.COM/prueba",
+        "example.com"
+    )
+
+
+def test_validate_url_domain_rejects_invalid_url_host():
+
+    try:
+        UrlService._validate_url_domain(
+            "not a valid url",
+            "example.com"
+        )
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL no contiene un dominio válido"
+
+
+def test_validate_url_domain_rejects_invalid_selected_domain():
+
+    try:
+        UrlService._validate_url_domain(
+            "https://example.com/prueba",
+            "not a valid domain"
+        )
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio seleccionado no es válido"
+
+
+def test_validate_url_domain_rejects_different_domain():
+
+    try:
+        UrlService._validate_url_domain(
+            "https://example.org/prueba",
+            "example.com"
+        )
+        assert False
+    except ValueError as error:
+        message = str(error)
+
+        assert "no pertenece al dominio seleccionado" in message
+        assert "example.com" in message
+        assert "example.org" in message

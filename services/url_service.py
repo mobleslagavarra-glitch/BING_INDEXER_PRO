@@ -126,16 +126,32 @@ class UrlService:
 
         host = str(host).strip()
 
+        if not host or any(char.isspace() for char in host):
+            return ""
+
         if "://" not in host:
             host = "https://" + host
 
         parsed = urlparse(host)
 
-        return (
-            parsed.hostname.lower().rstrip(".")
-            if parsed.hostname
-            else ""
-        )
+        if not parsed.hostname:
+            return ""
+
+        hostname = parsed.hostname.lower().rstrip(".")
+
+        if not hostname:
+            return ""
+
+        if "." not in hostname:
+            return ""
+
+        if hostname.startswith(".") or hostname.endswith("."):
+            return ""
+
+        if ".." in hostname:
+            return ""
+
+        return hostname
 
     @classmethod
     def _validate_url_domain(cls, url, domain):
