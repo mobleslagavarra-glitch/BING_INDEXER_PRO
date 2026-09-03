@@ -230,3 +230,84 @@ def test_initialize_defaults_with_all_settings_does_nothing(
 
     assert repository.settings == existing
     assert repository.set_calls == []
+
+
+def test_set_numeric_value_is_stored(monkeypatch):
+
+    service, repository = create_service(monkeypatch)
+
+    result = service.set(
+        "indexnow_retries",
+        5
+    )
+
+    assert result is True
+    assert repository.settings["indexnow_retries"] == "5"
+    assert repository.set_calls == [
+        ("indexnow_retries", 5)
+    ]
+
+
+def test_get_explicit_default_overrides_service_default(
+    monkeypatch
+):
+
+    service, _ = create_service(monkeypatch)
+
+    assert service.get(
+        "indexnow_interval",
+        "10"
+    ) == "10"
+
+
+def test_get_all_delegates_to_repository(monkeypatch):
+
+    settings = {
+        "indexnow_auto": "1",
+        "indexnow_retries": "5",
+        "indexnow_interval": "10"
+    }
+
+    service, _ = create_service(
+        monkeypatch,
+        settings
+    )
+
+    result = service.get_all()
+
+    assert result == list(settings.items())
+
+
+def test_delete_none_key_fails(monkeypatch):
+
+    service, _ = create_service(monkeypatch)
+
+    with pytest.raises(
+        ValueError,
+        match="La clave de configuración es obligatoria"
+    ):
+        service.delete(None)
+
+
+def test_initialize_defaults_replaces_none_values(
+    monkeypatch
+):
+
+    service, repository = create_service(
+        monkeypatch,
+        {
+            "indexnow_auto": None,
+            "indexnow_retries": "5"
+        }
+    )
+
+    service.initialize_defaults()
+
+    assert repository.settings["indexnow_auto"] == "0"
+    assert repository.settings["indexnow_retries"] == "5"
+    assert repository.settings["indexnow_interval"] == "1"
+
+    assert repository.set_calls == [
+        ("indexnow_auto", "0"),
+        ("indexnow_interval", "1")
+    ]
