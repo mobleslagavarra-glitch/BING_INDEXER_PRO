@@ -1,4 +1,4 @@
-﻿from PySide6.QtWidgets import QApplication, QDialog
+﻿from PySide6.QtWidgets import QApplication, QDialog, QMessageBox
 
 from models.url import UrlRecord
 from models.domain import Domain
@@ -643,3 +643,382 @@ def test_urls_page_add_url_error(monkeypatch):
 
     page.close()
     app.processEvents()
+def test_urls_page_edit_url_success(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=10,
+        url="https://example.com/old",
+        status="PENDIENTE",
+        response_code=None,
+        response_message=""
+    )
+
+    domains = [
+        Domain(
+            id=10,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        )
+    ]
+
+    class FakeUrlService:
+
+        def __init__(self):
+            self.updated = None
+
+        def get_urls(self):
+            return [url_record]
+
+        def get_url(self, url_id):
+            return url_record
+
+        def update_url(self, record):
+            self.updated = record
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return domains
+
+    class FakeUrlDialog:
+
+        def __init__(self, domains, parent=None):
+            self.url_edit = FakeLineEdit()
+            self.domain_combo = FakeComboBox()
+
+        def exec(self):
+            return QDialog.DialogCode.Accepted
+
+        def get_data(self):
+            return {
+                "domain_id": 10,
+                "url": "https://example.com/new"
+            }
+
+        def setWindowTitle(self, title):
+            self.title = title
+
+    class FakeLineEdit:
+
+        def setText(self, text):
+            self.text = text
+
+    class FakeComboBox:
+
+        def findData(self, value):
+            return 0
+
+        def setCurrentIndex(self, index):
+            self.index = index
+
+    url_service = FakeUrlService()
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        lambda: url_service
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlDialog",
+        FakeUrlDialog
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.table.selectRow(0)
+    page.edit_url()
+
+    assert url_service.updated is url_record
+    assert url_service.updated.domain_id == 10
+    assert url_service.updated.url == (
+        "https://example.com/new"
+    )
+
+    page.close()
+    app.processEvents()
+
+
+def test_urls_page_edit_url_not_found(monkeypatch):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=10,
+            url="https://example.com/test",
+            status="PENDIENTE",
+            response_code=None,
+            response_message=""
+        )
+    ]
+
+    domains = [
+        Domain(
+            id=10,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        )
+    ]
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return urls
+
+        def get_url(self, url_id):
+            return None
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return domains
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.warning",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.table.selectRow(0)
+    page.edit_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "Editar URL"
+    assert messages[0][2] == "La URL ya no existe."
+
+    page.close()
+    app.processEvents()
+
+
+def test_urls_page_delete_url_success(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=10,
+        url="https://example.com/delete",
+        status="PENDIENTE",
+        response_code=None,
+        response_message=""
+    )
+
+    domains = [
+        Domain(
+            id=10,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        )
+    ]
+
+    class FakeUrlService:
+
+        def __init__(self):
+            self.deleted_id = None
+
+        def get_urls(self):
+            return [url_record]
+
+        def delete_url(self, url_id):
+            self.deleted_id = url_id
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return domains
+
+    url_service = FakeUrlService()
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        lambda: url_service
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.Yes
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.table.selectRow(0)
+    page.delete_url()
+
+    assert url_service.deleted_id == 1
+
+    page.close()
+    app.processEvents()
+
+
+def test_urls_page_delete_url_cancelled(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=10,
+        url="https://example.com/delete",
+        status="PENDIENTE",
+        response_code=None,
+        response_message=""
+    )
+
+    domains = [
+        Domain(
+            id=10,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        )
+    ]
+
+    class FakeUrlService:
+
+        def __init__(self):
+            self.deleted_id = None
+
+        def get_urls(self):
+            return [url_record]
+
+        def delete_url(self, url_id):
+            self.deleted_id = url_id
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return domains
+
+    url_service = FakeUrlService()
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        lambda: url_service
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.No
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.table.selectRow(0)
+    page.delete_url()
+
+    assert url_service.deleted_id is None
+
+    page.close()
+    app.processEvents()
+
+
+def test_urls_page_delete_url_error(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=10,
+        url="https://example.com/delete",
+        status="PENDIENTE",
+        response_code=None,
+        response_message=""
+    )
+
+    domains = [
+        Domain(
+            id=10,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        )
+    ]
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return [url_record]
+
+        def delete_url(self, url_id):
+            raise ValueError("No se pudo eliminar")
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return domains
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.Yes
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.warning",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.table.selectRow(0)
+    page.delete_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "No se pudo eliminar"
+    assert messages[0][2] == "No se pudo eliminar"
+
+    page.close()
+    app.processEvents()
+
+
+
