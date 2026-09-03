@@ -515,3 +515,80 @@ def test_submit_batch_single_url(monkeypatch):
     assert payload["urlList"] == [
         "https://example.com/prueba"
     ]
+
+def test_normalize_host_https_with_path():
+
+    service = IndexNowService()
+
+    assert service._normalize_host(
+        "https://example.com/ruta/prueba"
+    ) == "example.com"
+
+
+def test_normalize_host_http_with_path():
+
+    service = IndexNowService()
+
+    assert service._normalize_host(
+        "http://example.com/ruta"
+    ) == "example.com"
+
+
+def test_normalize_host_converts_value_to_string():
+
+    service = IndexNowService()
+
+    assert service._normalize_host(
+        12345
+    ) == "12345"
+
+
+def test_normalize_host_scheme_without_domain_fails():
+
+    service = IndexNowService()
+
+    try:
+        service._normalize_host(
+            "https://"
+        )
+        assert False
+    except ValueError as error:
+        assert str(error) == "El host no es válido"
+
+
+def test_submit_batch_replaces_invalid_utf8(monkeypatch):
+
+    class InvalidUtf8Response:
+
+        status = 202
+
+        def read(self):
+            return b"Respuesta \xff"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            pass
+
+    def fake_urlopen(request, timeout):
+
+        return InvalidUtf8Response()
+
+    monkeypatch.setattr(
+        "services.indexnow_service.urllib.request.urlopen",
+        fake_urlopen
+    )
+
+    service = IndexNowService()
+
+    result = service.submit_batch(
+        "example.com",
+        "TEST_KEY",
+        ["https://example.com/prueba"]
+    )
+
+    assert result["success"] is True
+    assert result["status_code"] == 202
+    assert "Respuesta" in result["message"]
+    assert "\ufffd" in result["message"]
