@@ -523,3 +523,84 @@ def test_automation_lock_is_released_after_success(monkeypatch):
 
     assert service.is_running is False
     assert indexer_service.calls == 1
+
+def test_automation_is_enabled_only_for_value_one(monkeypatch):
+
+    service, _, _ = create_service(
+        monkeypatch,
+        [],
+        enabled=True
+    )
+
+    service.settings_service.get = (
+        lambda key, default=None: "true"
+    )
+
+    assert service.is_enabled() is False
+
+
+def test_automation_releases_lock_when_history_fails(monkeypatch):
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        [
+            create_url("ENVIADA")
+        ]
+    )
+
+    def failing_history_add(*args, **kwargs):
+        raise RuntimeError("Error registrando historial")
+
+    history_service.add = failing_history_add
+
+    try:
+        service.run()
+        assert False, "Se esperaba RuntimeError"
+    except RuntimeError as error:
+        assert str(error) == "Error registrando historial"
+
+    assert indexer_service.calls == 1
+    assert service.last_run is not None
+    assert service.processed_count == 1
+    assert service.success_count == 1
+    assert service.error_count == 0
+    assert service.is_running is False
+
+
+def test_automation_can_run_again_after_history_error(monkeypatch):
+
+    service, indexer_service, history_service = create_service(
+        monkeypatch,
+        [
+            create_url("ENVIADA", 1)
+        ]
+    )
+
+    original_add = history_service.add
+    history_failed = {"value": False}
+
+    def history_add_with_one_failure(*args, **kwargs):
+
+        if not history_failed["value"]:
+            history_failed["value"] = True
+            raise RuntimeError("Error temporal")
+
+        return original_add(*args, **kwargs)
+
+    history_service.add = history_add_with_one_failure
+
+    try:
+        service.run()
+        assert False, "Se esperaba RuntimeError"
+    except RuntimeError as error:
+        assert str(error) == "Error temporal"
+
+    assert service.is_running is False
+    assert indexer_service.calls == 1
+
+    result = service.run()
+
+    assert result[0].status == "ENVIADA"
+    assert indexer_service.calls == 2
+    assert service.is_running is False
+    assert len(history_service.events) == 1
