@@ -643,3 +643,77 @@ def test_validate_url_domain_rejects_different_domain():
         assert "no pertenece al dominio seleccionado" in message
         assert "example.com" in message
         assert "example.org" in message
+
+def test_normalize_host_rejects_internal_spaces():
+
+    assert UrlService._normalize_host(
+        "example .com"
+    ) == ""
+
+
+def test_normalize_host_rejects_single_label():
+
+    assert UrlService._normalize_host(
+        "localhost"
+    ) == ""
+
+
+def test_normalize_host_rejects_consecutive_dots():
+
+    assert UrlService._normalize_host(
+        "example..com"
+    ) == ""
+
+
+def test_validate_url_domain_rejects_invalid_url_host_with_no_dot():
+
+    try:
+        UrlService._validate_url_domain(
+            "https://localhost/prueba",
+            "example.com"
+        )
+        assert False
+    except ValueError as error:
+        assert str(error) == "La URL no contiene un dominio válido"
+
+
+def test_update_url_normalizes_markdown_url(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/antigua"
+    )
+
+    url.url = "[https://example.com/nueva](https://example.com/nueva)"
+
+    result = service.update_url(url)
+
+    assert result is True
+    assert url.url == "https://example.com/nueva"
+    assert url.status == "PENDIENTE"
+    assert url.response_code is None
+    assert url.response_message == ""
+
+
+def test_update_url_keeps_selected_domain(monkeypatch):
+
+    service, _, _ = create_service(monkeypatch)
+
+    url = service.add_url(
+        1,
+        "https://example.com/prueba"
+    )
+
+    url.domain_id = 1
+    url.url = "https://example.com/otra"
+
+    result = service.update_url(url)
+
+    assert result is True
+    assert url.domain_id == 1
+    assert url.url == "https://example.com/otra"
+
+
+
