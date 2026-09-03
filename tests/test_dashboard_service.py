@@ -323,3 +323,133 @@ def test_complete_dashboard_statistics(monkeypatch):
         "successful_urls": 2,
         "error_urls": 1,
     }
+
+
+def test_299_response_counts_as_success(monkeypatch):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/299",
+            status="ENVIADA",
+            response_code=299,
+            response_message=""
+        )
+    ]
+
+    service = create_service(
+        monkeypatch,
+        urls=urls
+    )
+
+    result = service.get_statistics()
+
+    assert result["successful_urls"] == 1
+    assert result["error_urls"] == 0
+
+
+def test_400_response_counts_as_error(monkeypatch):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/400",
+            status="ERROR",
+            response_code=400,
+            response_message=""
+        )
+    ]
+
+    service = create_service(
+        monkeypatch,
+        urls=urls
+    )
+
+    result = service.get_statistics()
+
+    assert result["successful_urls"] == 0
+    assert result["error_urls"] == 1
+
+
+def test_399_response_is_neither_success_nor_error(monkeypatch):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/399",
+            status="ENVIADA",
+            response_code=399,
+            response_message=""
+        )
+    ]
+
+    service = create_service(
+        monkeypatch,
+        urls=urls
+    )
+
+    result = service.get_statistics()
+
+    assert result["successful_urls"] == 0
+    assert result["error_urls"] == 0
+
+
+def test_none_response_code_is_not_success_or_error(monkeypatch):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/sin-respuesta",
+            status="ENVIADA",
+            response_code=None,
+            response_message=""
+        )
+    ]
+
+    service = create_service(
+        monkeypatch,
+        urls=urls
+    )
+
+    result = service.get_statistics()
+
+    assert result["successful_urls"] == 0
+    assert result["error_urls"] == 0
+
+
+def test_url_status_does_not_determine_success_or_error_counts(
+    monkeypatch
+):
+
+    urls = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/ok",
+            status="ERROR",
+            response_code=200,
+            response_message=""
+        ),
+        UrlRecord(
+            id=2,
+            domain_id=1,
+            url="https://example.com/error",
+            status="ENVIADA",
+            response_code=500,
+            response_message=""
+        )
+    ]
+
+    service = create_service(
+        monkeypatch,
+        urls=urls
+    )
+
+    result = service.get_statistics()
+
+    assert result["successful_urls"] == 1
+    assert result["error_urls"] == 1
