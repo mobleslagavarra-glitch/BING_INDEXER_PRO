@@ -1073,3 +1073,163 @@ def test_index_pending_urls_batch_empty_returns_empty(monkeypatch):
 
     assert results == []
     assert indexnow_service.calls == []
+
+def test_index_pending_urls_batch_negative_batch_size(monkeypatch):
+    service, _, _, _ = create_batch_service(
+        monkeypatch,
+        [],
+        []
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="El tamaño del lote debe ser mayor que cero"
+    ):
+        service.index_pending_urls_batch(-1)
+
+
+def test_index_pending_urls_batch_http_200_marks_urls_as_sent(
+    monkeypatch
+):
+    records = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/uno",
+            status="PENDIENTE",
+            response_code=500,
+            response_message="Error anterior"
+        )
+    ]
+
+    domains = [
+        Domain(
+            id=1,
+            domain="example.com",
+            api_key="TEST_KEY",
+            enabled=True
+        )
+    ]
+
+    (
+        service,
+        repository,
+        indexnow_service,
+        history
+    ) = create_batch_service(
+        monkeypatch,
+        records,
+        domains,
+        response={
+            "status_code": 200,
+            "message": "OK"
+        }
+    )
+
+    results = service.index_pending_urls_batch()
+
+    assert len(results) == 1
+    assert results[0].status == "ENVIADA"
+    assert results[0].response_code == 200
+    assert results[0].response_message == "OK"
+
+
+def test_index_pending_urls_batch_groups_urls_by_domain(
+    monkeypatch
+):
+    records = [
+        UrlRecord(
+            id=1,
+            domain_id=1,
+            url="https://example.com/uno",
+            status="PENDIENTE"
+        ),
+        UrlRecord(
+            id=2,
+            domain_id=2,
+            url="https://otro.com/dos",
+            status="PENDIENTE"
+        ),
+        UrlRecord(
+            id=3,
+            domain_id=1,
+            url="https://example.com/tres",
+            status="PENDIENTE"
+        )
+    ]
+
+    domains = [
+        Domain(
+            id=1,
+            domain="example.com",
+            api_key="KEY_ONE",
+            enabled=True
+        ),
+        Domain(
+            id=2,
+            domain="otro.com",
+            api_key="KEY_TWO",
+            enabled=True
+        )
+    ]
+
+    (
+        service,
+        repository,
+        indexnow_service,
+        history
+    ) = create_batch_service(
+        monkeypatch,
+        records,
+        domains,
+        response={
+            "status_code": 202,
+            "message": "Aceptado"
+        }
+    )
+
+    results = service.index_pending_urls_batch()
+
+    assert len(results) == 3
+    assert len(indexnow_service.calls) == 2
+
+    calls_by_host = {
+        call[0]: call
+        for call in indexnow_service.calls
+    }
+
+    assert calls_by_host["example.com"][1] == "KEY_ONE"
+    assert calls_by_host["example.com"][2] == [
+        "https://example.com/uno",
+        "https://example.com/tres"
+    ]
+
+    assert calls_by_host["otro.com"][1] == "KEY_TWO"
+    assert calls_by_host["otro.com"][2] == [
+        "https://otro.com/dos"
+    ]
+
+
+def test_index_url_clears_previous_response_before_processing(
+    monkeypatch
+):
+    service, url_record, _, history = create_service(
+        monkeypatch,
+        [
+            {
+                "status_code": 202,
+                "message": "Aceptado"
+            }
+        ]
+    )
+
+    url_record.response_code = 500
+    url_record.response_message = "Error anterior"
+
+    service.index_url(url_record.id)
+
+    assert url_record.status == "ENVIADA"
+    assert url_record.response_code == 202
+    assert url_record.response_message == "Aceptado"
+
+    assert history.entries[0][0] == "INDEXACION_INICIADA"
