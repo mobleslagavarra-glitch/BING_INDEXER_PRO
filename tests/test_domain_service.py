@@ -1,4 +1,4 @@
-from services.domain_service import DomainService
+﻿from services.domain_service import DomainService
 
 
 class FakeRepository:
@@ -266,3 +266,73 @@ def test_delete_domain_without_id_fails(monkeypatch):
         assert False
     except ValueError as error:
         assert str(error) == "El ID del dominio es obligatorio"
+
+
+def test_add_none_domain_fails(monkeypatch):
+
+    service = create_service(monkeypatch)
+
+    try:
+        service.add_domain(None)
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio no puede estar vacío"
+
+
+def test_add_domain_with_internal_spaces_fails(monkeypatch):
+
+    service = create_service(monkeypatch)
+
+    try:
+        service.add_domain("example .com")
+        assert False
+    except ValueError as error:
+        assert str(error) == "El dominio no puede estar vacío"
+
+
+def test_update_domain_without_api_key_uses_empty_string(
+    monkeypatch
+):
+
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain(
+        "example.com",
+        "OLD_KEY",
+        True
+    )
+
+    domain.api_key = None
+
+    result = service.update_domain(domain)
+
+    assert result is True
+    assert domain.api_key == ""
+
+
+def test_update_domain_converts_enabled_to_boolean(
+    monkeypatch
+):
+
+    service = create_service(monkeypatch)
+
+    domain = service.add_domain(
+        "example.com",
+        "TEST_KEY",
+        True
+    )
+
+    domain.enabled = 0
+
+    result = service.update_domain(domain)
+
+    assert result is True
+    assert domain.enabled is False
+
+
+def test_delete_missing_domain_returns_false(monkeypatch):
+
+    service = create_service(monkeypatch)
+
+    assert service.delete_domain(999) is False
+

@@ -1,4 +1,4 @@
-from models.domain import Domain
+﻿from models.domain import Domain
 from repositories.domain_repository import DomainRepository
 
 
@@ -79,4 +79,9 @@ class DomainService:
         if domain is None:
             return ""
 
-        return domain.strip().lower()
+        domain = domain.strip()
+
+        if not domain or any(char.isspace() for char in domain):
+            return ""
+
+        return domain.lower()
