@@ -130,3 +130,17 @@ def test_delete_missing_setting(
     assert repository.delete(
         "no_existe"
     ) is False
+def test_set_updates_existing_setting(
+    tmp_path,
+    monkeypatch
+):
+    repository = create_repository(
+        monkeypatch,
+        tmp_path
+    )
+
+    assert repository.set("indexnow_auto", "0") is True
+    assert repository.get("indexnow_auto") == "0"
+
+    assert repository.set("indexnow_auto", "1") is True
+    assert repository.get("indexnow_auto") == "1"

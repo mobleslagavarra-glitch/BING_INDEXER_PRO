@@ -1,3 +1,4 @@
+import pytest
 import sqlite3
 
 from models.domain import Domain
@@ -119,3 +120,63 @@ def test_delete_domain(tmp_path, monkeypatch):
 
     assert result is True
     assert repository.get_by_id(domain.id) is None
+
+
+def test_get_by_id_returns_none_for_missing_domain(
+    tmp_path,
+    monkeypatch
+):
+    repository = create_test_database(
+        tmp_path,
+        monkeypatch
+    )
+
+    assert repository.get_by_id(999) is None
+
+
+def test_update_domain_without_id_fails():
+    repository = DomainRepository()
+
+    domain = Domain(
+        id=None,
+        domain="example.com",
+        api_key="KEY",
+        enabled=True
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="sin ID"
+    ):
+        repository.update(domain)
+
+
+def test_update_missing_domain_returns_false(
+    tmp_path,
+    monkeypatch
+):
+    repository = create_test_database(
+        tmp_path,
+        monkeypatch
+    )
+
+    domain = Domain(
+        id=999,
+        domain="example.com",
+        api_key="KEY",
+        enabled=True
+    )
+
+    assert repository.update(domain) is False
+
+
+def test_delete_missing_domain_returns_false(
+    tmp_path,
+    monkeypatch
+):
+    repository = create_test_database(
+        tmp_path,
+        monkeypatch
+    )
+
+    assert repository.delete(999) is False
