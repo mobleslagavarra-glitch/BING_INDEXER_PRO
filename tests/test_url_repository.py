@@ -320,3 +320,161 @@ def test_delete_missing_url_returns_false(
     repository = UrlRepository()
 
     assert repository.delete(999) is False
+
+def test_get_all_empty_returns_empty_list(
+    tmp_path,
+    monkeypatch
+):
+
+    db_file = tmp_path / "test.db"
+
+    monkeypatch.setattr(
+        "repositories.url_repository.DB_FILE",
+        db_file
+    )
+
+    monkeypatch.setattr(
+        "core.database.DB_FILE",
+        db_file
+    )
+
+    initialize_database()
+
+    repository = UrlRepository()
+
+    assert repository.get_all() == []
+
+
+def test_get_by_id_converts_null_response_message_to_empty_string(
+    tmp_path,
+    monkeypatch
+):
+
+    db_file = tmp_path / "test.db"
+
+    monkeypatch.setattr(
+        "repositories.url_repository.DB_FILE",
+        db_file
+    )
+
+    monkeypatch.setattr(
+        "core.database.DB_FILE",
+        db_file
+    )
+
+    initialize_database()
+
+    repository = UrlRepository()
+
+    conn = repository.get_connection()
+
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO urls (
+                domain_id,
+                url,
+                status,
+                response_code,
+                response_message
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                1,
+                "https://example.com/null-message",
+                "PENDIENTE",
+                None,
+                None
+            )
+        )
+
+        conn.commit()
+
+        url_id = cursor.lastrowid
+
+    finally:
+        conn.close()
+
+    result = repository.get_by_id(url_id)
+
+    assert result is not None
+    assert result.response_message == ""
+
+
+def test_create_many_preserves_response_data(
+    tmp_path,
+    monkeypatch
+):
+
+    db_file = tmp_path / "test.db"
+
+    monkeypatch.setattr(
+        "repositories.url_repository.DB_FILE",
+        db_file
+    )
+
+    monkeypatch.setattr(
+        "core.database.DB_FILE",
+        db_file
+    )
+
+    initialize_database()
+
+    repository = UrlRepository()
+
+    records = [
+        (
+            1,
+            "https://example.com/uno",
+            "ENVIADA",
+            200,
+            "OK"
+        ),
+        (
+            1,
+            "https://example.com/dos",
+            "ERROR",
+            500,
+            "Error servidor"
+        ),
+    ]
+
+    created = repository.create_many(records)
+
+    assert created == 2
+
+    results = repository.get_all()
+
+    assert len(results) == 2
+
+    by_url = {
+        record.url: record
+        for record in results
+    }
+
+    assert by_url[
+        "https://example.com/uno"
+    ].status == "ENVIADA"
+
+    assert by_url[
+        "https://example.com/uno"
+    ].response_code == 200
+
+    assert by_url[
+        "https://example.com/uno"
+    ].response_message == "OK"
+
+    assert by_url[
+        "https://example.com/dos"
+    ].status == "ERROR"
+
+    assert by_url[
+        "https://example.com/dos"
+    ].response_code == 500
+
+    assert by_url[
+        "https://example.com/dos"
+    ].response_message == "Error servidor"
