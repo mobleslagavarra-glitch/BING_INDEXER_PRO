@@ -264,3 +264,30 @@ def test_clear_empty_history_returns_zero(monkeypatch):
 
     assert result == 0
     assert connection.cursor_instance.rows == []
+
+
+def test_get_all_empty_history_returns_empty_list(monkeypatch):
+
+    service, connection = create_service(monkeypatch)
+
+    result = service.get_all()
+
+    assert result == []
+
+
+def test_clear_then_get_all_returns_empty_list(monkeypatch):
+
+    service, connection = create_service(monkeypatch)
+
+    service.add(
+        "EVENTO_1",
+        "Primero"
+    )
+
+    service.add(
+        "EVENTO_2",
+        "Segundo"
+    )
+
+    assert service.clear() == 2
+    assert service.get_all() == []
