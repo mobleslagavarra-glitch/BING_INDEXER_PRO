@@ -8,7 +8,7 @@ class FakeIndexerService:
         self.results = results
         self.calls = 0
 
-    def index_pending_urls_batch(self):
+    def index_all_urls_batch(self):
         self.calls += 1
         return self.results
 
@@ -101,9 +101,9 @@ def create_url(status, url_id=1):
     )
 
 
-def test_interval_is_one_minute():
+def test_interval_is_one_day():
 
-    assert AutomationService.INTERVAL_MS == 60000
+    assert AutomationService.INTERVAL_MS == 86400000
 
 
 def test_automation_enabled(monkeypatch):
@@ -169,7 +169,7 @@ def test_automation_counts_successes(monkeypatch):
     assert event[0] == "AUTOMATIZACION_EJECUTADA"
 
     assert event[1] == (
-        "Ejecución automática de IndexNow: "
+        "Ejecución automática diaria de IndexNow: "
         "procesadas: 3 | "
         "correctas: 3 | "
         "errores: 0"
@@ -209,7 +209,7 @@ def test_automation_counts_errors(monkeypatch):
     assert event[0] == "AUTOMATIZACION_EJECUTADA"
 
     assert event[1] == (
-        "Ejecución automática de IndexNow: "
+        "Ejecución automática diaria de IndexNow: "
         "procesadas: 3 | "
         "correctas: 1 | "
         "errores: 2"
@@ -271,7 +271,7 @@ def test_automation_without_pending_urls(monkeypatch):
     assert event[0] == "AUTOMATIZACION_EJECUTADA"
 
     assert event[1] == (
-        "Ejecución automática de IndexNow: "
+        "Ejecución automática diaria de IndexNow: "
         "procesadas: 0 | "
         "correctas: 0 | "
         "errores: 0"
@@ -314,12 +314,12 @@ def test_automation_releases_lock_after_error(monkeypatch):
         []
     )
 
-    def failing_index_pending_urls_batch():
+    def failing_index_all_urls_batch():
         indexer_service.calls += 1
         raise RuntimeError("Error de prueba")
 
-    indexer_service.index_pending_urls_batch = (
-        failing_index_pending_urls_batch
+    indexer_service.index_all_urls_batch = (
+        failing_index_all_urls_batch
     )
 
     try:
@@ -604,3 +604,6 @@ def test_automation_can_run_again_after_history_error(monkeypatch):
     assert indexer_service.calls == 2
     assert service.is_running is False
     assert len(history_service.events) == 1
+
+
+

@@ -7,7 +7,7 @@ from services.history_service import HistoryService
 
 class AutomationService:
 
-    INTERVAL_MS = 60000
+    INTERVAL_MS = 24 * 60 * 60 * 1000
 
     def __init__(self):
         self.indexer_service = IndexerService()
@@ -40,7 +40,7 @@ class AutomationService:
 
         try:
 
-            results = self.indexer_service.index_pending_urls_batch()
+            results = self.indexer_service.index_all_urls_batch()
 
             self.last_run = datetime.now()
 
@@ -61,7 +61,7 @@ class AutomationService:
             self.history_service.add(
                 "AUTOMATIZACION_EJECUTADA",
                 (
-                    "Ejecución automática de IndexNow: "
+                    "Ejecución automática diaria de IndexNow: "
                     f"procesadas: {self.processed_count} | "
                     f"correctas: {self.success_count} | "
                     f"errores: {self.error_count}"
