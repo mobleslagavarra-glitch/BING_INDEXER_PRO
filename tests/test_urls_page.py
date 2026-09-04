@@ -1022,3 +1022,421 @@ def test_urls_page_delete_url_error(monkeypatch):
 
 
 
+
+def test_urls_page_import_excel_cancelled(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+
+        def import_file(self, file_path):
+            raise AssertionError("No debe llamarse si se cancela")
+
+    class FakeIndexerService:
+        pass
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        FakeExcelImportService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QFileDialog.getOpenFileName",
+        lambda *args: ("", "")
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.import_excel()
+
+
+def test_urls_page_import_excel_success(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+
+        def __init__(self):
+            self.file_path = None
+
+        def import_file(self, file_path):
+            self.file_path = file_path
+
+            return {
+                "imported": 5,
+                "duplicates": 2,
+                "invalid": 1,
+                "unknown_domains": 3
+            }
+
+    class FakeIndexerService:
+        pass
+
+    excel_service = FakeExcelImportService()
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        lambda: excel_service
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QFileDialog.getOpenFileName",
+        lambda *args: ("C:/temp/urls.xlsx", "Excel")
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.information",
+        lambda *args: None
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    reloaded = {"value": False}
+
+    page.load_urls = lambda: reloaded.__setitem__(
+        "value",
+        True
+    )
+
+    page.import_excel()
+
+    assert excel_service.file_path == "C:/temp/urls.xlsx"
+    assert reloaded["value"] is True
+
+
+def test_urls_page_import_excel_error(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+
+        def import_file(self, file_path):
+            raise ValueError("Archivo Excel no válido")
+
+    class FakeIndexerService:
+        pass
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        FakeExcelImportService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QFileDialog.getOpenFileName",
+        lambda *args: ("C:/temp/urls.xlsx", "Excel")
+    )
+
+    captured = {}
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.critical",
+        lambda *args: captured.update(
+            {
+                "title": args[1],
+                "message": args[2]
+            }
+        )
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.import_excel()
+
+    assert captured["title"] == "Error al importar"
+    assert "Archivo Excel no válido" in captured["message"]
+
+
+def test_urls_page_send_pending_cancelled(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+        pass
+
+    class FakeIndexerService:
+
+        def index_pending_urls_batch(self):
+            raise AssertionError("No debe indexar si se cancela")
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        FakeExcelImportService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.No
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    page.send_pending()
+
+
+def test_urls_page_send_pending_success(monkeypatch):
+
+    class FakeResult:
+
+        def __init__(self, status):
+            self.status = status
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+        pass
+
+    class FakeIndexerService:
+
+        def index_pending_urls_batch(self):
+            return [
+                FakeResult("ENVIADA"),
+                FakeResult("ENVIADA"),
+                FakeResult("ERROR")
+            ]
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        FakeExcelImportService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.Yes
+    )
+
+    captured = {}
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.information",
+        lambda *args: captured.update(
+            {
+                "title": args[1],
+                "message": args[2]
+            }
+        )
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    reloaded = {"value": False}
+
+    page.load_urls = lambda: reloaded.__setitem__(
+        "value",
+        True
+    )
+
+    page.send_pending()
+
+    assert captured["title"] == "IndexNow"
+    assert "Procesadas: 3" in captured["message"]
+    assert "Correctas: 2" in captured["message"]
+    assert "Errores: 1" in captured["message"]
+    assert reloaded["value"] is True
+
+
+def test_urls_page_send_pending_error(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return []
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return []
+
+    class FakeExcelImportService:
+        pass
+
+    class FakeIndexerService:
+
+        def index_pending_urls_batch(self):
+            raise RuntimeError("Error de conexión")
+
+    monkeypatch.setattr(
+        "gui.pages.urls.UrlService",
+        FakeUrlService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.DomainService",
+        FakeDomainService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.ExcelImportService",
+        FakeExcelImportService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.IndexerService",
+        FakeIndexerService
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.question",
+        lambda *args: QMessageBox.StandardButton.Yes
+    )
+
+    captured = {}
+
+    monkeypatch.setattr(
+        "gui.pages.urls.QMessageBox.critical",
+        lambda *args: captured.update(
+            {
+                "title": args[1],
+                "message": args[2]
+            }
+        )
+    )
+
+    from gui.pages.urls import UrlsPage
+
+    app = get_qapplication()
+    page = UrlsPage()
+
+    reloaded = {"value": False}
+
+    page.load_urls = lambda: reloaded.__setitem__(
+        "value",
+        True
+    )
+
+    page.send_pending()
+
+    assert captured["title"] == "Error"
+    assert "Error de conexión" in captured["message"]
+    assert reloaded["value"] is True
+
+
