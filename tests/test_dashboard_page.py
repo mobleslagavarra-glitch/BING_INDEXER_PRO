@@ -294,3 +294,106 @@ def test_dashboard_page_handles_service_error(monkeypatch):
 
     page.close()
     app.processEvents()
+
+def test_dashboard_page_automation_initial_values(monkeypatch):
+
+    class FakeDashboardService:
+
+        def get_statistics(self):
+            return {
+                "total_domains": 0,
+                "active_domains": 0,
+                "total_urls": 0,
+                "pending_urls": 0,
+                "successful_urls": 0,
+                "error_urls": 0,
+            }
+
+    monkeypatch.setattr(
+        "gui.pages.dashboard.DashboardService",
+        lambda: FakeDashboardService()
+    )
+
+    from gui.pages.dashboard import DashboardPage
+
+    app = get_qapplication()
+    page = DashboardPage()
+
+    assert page.lbl_automation_status.text() == (
+        "Estado: DESACTIVADA"
+    )
+    assert page.lbl_automation_interval.text() == (
+        "Intervalo: -"
+    )
+    assert page.lbl_automation_last_run.text() == (
+        "Última ejecución: pendiente"
+    )
+    assert page.lbl_automation_processed.text() == (
+        "Procesadas: 0"
+    )
+    assert page.lbl_automation_success.text() == (
+        "Correctas: 0"
+    )
+    assert page.lbl_automation_errors.text() == (
+        "Errores: 0"
+    )
+
+    page.close()
+    app.processEvents()
+
+
+def test_dashboard_page_update_automation_status_without_last_run(
+    monkeypatch
+):
+
+    class FakeDashboardService:
+
+        def get_statistics(self):
+            return {
+                "total_domains": 0,
+                "active_domains": 0,
+                "total_urls": 0,
+                "pending_urls": 0,
+                "successful_urls": 0,
+                "error_urls": 0,
+            }
+
+    monkeypatch.setattr(
+        "gui.pages.dashboard.DashboardService",
+        lambda: FakeDashboardService()
+    )
+
+    from gui.pages.dashboard import DashboardPage
+
+    app = get_qapplication()
+    page = DashboardPage()
+
+    page.update_automation_status(
+        enabled=True,
+        interval_minutes=2,
+        processed=4,
+        success=3,
+        errors=1
+    )
+
+    assert page.lbl_automation_status.text() == (
+        "Estado: ACTIVA"
+    )
+    assert page.lbl_automation_interval.text() == (
+        "Intervalo: 2 minuto(s)"
+    )
+    assert page.lbl_automation_last_run.text() == (
+        "Última ejecución: pendiente"
+    )
+    assert page.lbl_automation_processed.text() == (
+        "Procesadas: 4"
+    )
+    assert page.lbl_automation_success.text() == (
+        "Correctas: 3"
+    )
+    assert page.lbl_automation_errors.text() == (
+        "Errores: 1"
+    )
+
+    page.close()
+    app.processEvents()
