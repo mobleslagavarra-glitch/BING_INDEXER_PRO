@@ -522,3 +522,397 @@ def test_indexnow_page_manual_send_success(monkeypatch):
 
     page.close()
     app.processEvents()
+
+def test_indexnow_page_invalid_url_id(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return [
+                UrlRecord(
+                    id=1,
+                    domain_id=1,
+                    url="https://example.com/prueba",
+                    status="PENDIENTE"
+                )
+            ]
+
+        def get_url(self, url_id):
+            raise AssertionError(
+                "No se debe consultar el servicio con un ID inválido"
+            )
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return [
+                Domain(
+                    id=1,
+                    domain="example.com",
+                    api_key="TEST_KEY",
+                    enabled=True
+                )
+            ]
+
+    class FakeIndexerService:
+        pass
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.IndexerService",
+        lambda: FakeIndexerService()
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.QMessageBox.critical",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.indexnow import IndexNowPage
+
+    app = get_qapplication()
+    page = IndexNowPage()
+
+    page.table.item(0, 0).setText("ABC")
+    page.table.selectRow(0)
+    page.send_selected_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "Error"
+    assert messages[0][2] == (
+        "El ID de la URL no es válido."
+    )
+
+    page.close()
+    app.processEvents()
+
+
+def test_indexnow_page_url_not_found(monkeypatch):
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return [
+                UrlRecord(
+                    id=1,
+                    domain_id=1,
+                    url="https://example.com/prueba",
+                    status="PENDIENTE"
+                )
+            ]
+
+        def get_url(self, url_id):
+            return None
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return [
+                Domain(
+                    id=1,
+                    domain="example.com",
+                    api_key="TEST_KEY",
+                    enabled=True
+                )
+            ]
+
+    class FakeIndexerService:
+        pass
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.IndexerService",
+        lambda: FakeIndexerService()
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.QMessageBox.critical",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.indexnow import IndexNowPage
+
+    app = get_qapplication()
+    page = IndexNowPage()
+
+    page.table.selectRow(0)
+    page.send_selected_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "Error"
+    assert messages[0][2] == (
+        "No se ha encontrado la URL."
+    )
+
+    page.close()
+    app.processEvents()
+
+def test_indexnow_page_manual_send_error(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=1,
+        url="https://example.com/error",
+        status="PENDIENTE"
+    )
+
+    class FakeUrlService:
+
+        def __init__(self):
+            self.get_urls_calls = 0
+
+        def get_urls(self):
+            self.get_urls_calls += 1
+            return [url_record]
+
+        def get_url(self, url_id):
+            return url_record
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return [
+                Domain(
+                    id=1,
+                    domain="example.com",
+                    api_key="TEST_KEY",
+                    enabled=True
+                )
+            ]
+
+    class FakeResult:
+
+        status = "ERROR"
+        url = "https://example.com/error"
+        response_code = 500
+        response_message = "Error de prueba"
+
+    class FakeIndexerService:
+
+        def __init__(self):
+            self.calls = []
+
+        def index_url(self, url_id):
+            self.calls.append(url_id)
+            return FakeResult()
+
+    url_service = FakeUrlService()
+    indexer = FakeIndexerService()
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.UrlService",
+        lambda: url_service
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.IndexerService",
+        lambda: indexer
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.QMessageBox.warning",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.indexnow import IndexNowPage
+
+    app = get_qapplication()
+    page = IndexNowPage()
+
+    assert page.table.rowCount() == 1
+    assert url_service.get_urls_calls == 1
+
+    page.table.selectRow(0)
+    page.send_selected_url()
+
+    assert indexer.calls == [1]
+
+    assert len(messages) == 1
+    assert messages[0][1] == "IndexNow"
+    assert "no ha podido aceptar" in messages[0][2]
+    assert "https://example.com/error" in messages[0][2]
+    assert "500" in messages[0][2]
+    assert "Error de prueba" in messages[0][2]
+
+    assert url_service.get_urls_calls == 2
+
+    page.close()
+    app.processEvents()
+
+def test_indexnow_page_handles_value_error(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=1,
+        url="https://example.com/prueba",
+        status="PENDIENTE"
+    )
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return [url_record]
+
+        def get_url(self, url_id):
+            return url_record
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return [
+                Domain(
+                    id=1,
+                    domain="example.com",
+                    api_key="TEST_KEY",
+                    enabled=True
+                )
+            ]
+
+    class FakeIndexerService:
+
+        def index_url(self, url_id):
+            raise ValueError("Error de validación")
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.IndexerService",
+        lambda: FakeIndexerService()
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.QMessageBox.warning",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.indexnow import IndexNowPage
+
+    app = get_qapplication()
+    page = IndexNowPage()
+
+    page.table.selectRow(0)
+    page.send_selected_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "IndexNow"
+    assert messages[0][2] == "Error de validación"
+
+    page.close()
+    app.processEvents()
+
+
+def test_indexnow_page_handles_unexpected_error(monkeypatch):
+
+    url_record = UrlRecord(
+        id=1,
+        domain_id=1,
+        url="https://example.com/prueba",
+        status="PENDIENTE"
+    )
+
+    class FakeUrlService:
+
+        def get_urls(self):
+            return [url_record]
+
+        def get_url(self, url_id):
+            return url_record
+
+    class FakeDomainService:
+
+        def get_domains(self):
+            return [
+                Domain(
+                    id=1,
+                    domain="example.com",
+                    api_key="TEST_KEY",
+                    enabled=True
+                )
+            ]
+
+    class FakeIndexerService:
+
+        def index_url(self, url_id):
+            raise RuntimeError("Fallo inesperado")
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.UrlService",
+        lambda: FakeUrlService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.DomainService",
+        lambda: FakeDomainService()
+    )
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.IndexerService",
+        lambda: FakeIndexerService()
+    )
+
+    messages = []
+
+    monkeypatch.setattr(
+        "gui.pages.indexnow.QMessageBox.critical",
+        lambda *args: messages.append(args)
+    )
+
+    from gui.pages.indexnow import IndexNowPage
+
+    app = get_qapplication()
+    page = IndexNowPage()
+
+    page.table.selectRow(0)
+    page.send_selected_url()
+
+    assert len(messages) == 1
+    assert messages[0][1] == "Error"
+    assert (
+        messages[0][2]
+        == (
+            "Se ha producido un error al enviar "
+            "la URL a IndexNow:\n\nFallo inesperado"
+        )
+    )
+
+    page.close()
+    app.processEvents()
