@@ -40,7 +40,11 @@ class AutomationService:
 
         try:
 
-            results = self.indexer_service.index_all_urls_batch()
+            # La automatización solo debe procesar
+            # URLs que estén realmente PENDIENTES.
+            #
+            # NO debe volver a enviar las URLs ENVIADA.
+            results = self.indexer_service.index_pending_urls_batch()
 
             self.last_run = datetime.now()
 

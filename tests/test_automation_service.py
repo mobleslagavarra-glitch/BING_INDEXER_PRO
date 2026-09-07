@@ -8,7 +8,7 @@ class FakeIndexerService:
         self.results = results
         self.calls = 0
 
-    def index_all_urls_batch(self):
+    def index_pending_urls_batch(self):
         self.calls += 1
         return self.results
 
@@ -314,12 +314,12 @@ def test_automation_releases_lock_after_error(monkeypatch):
         []
     )
 
-    def failing_index_all_urls_batch():
+    def failing_index_pending_urls_batch():
         indexer_service.calls += 1
         raise RuntimeError("Error de prueba")
 
-    indexer_service.index_all_urls_batch = (
-        failing_index_all_urls_batch
+    indexer_service.index_pending_urls_batch = (
+        failing_index_pending_urls_batch
     )
 
     try:
@@ -604,6 +604,7 @@ def test_automation_can_run_again_after_history_error(monkeypatch):
     assert indexer_service.calls == 2
     assert service.is_running is False
     assert len(history_service.events) == 1
+
 
 
 

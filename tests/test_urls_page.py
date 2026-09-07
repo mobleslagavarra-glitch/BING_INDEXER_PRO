@@ -1152,6 +1152,9 @@ def test_urls_page_import_excel_success(monkeypatch):
 
     page.import_excel()
 
+    while page._excel_thread is not None and page._excel_thread.isRunning():
+        app.processEvents()
+
     assert excel_service.file_path == "C:/temp/urls.xlsx"
     assert reloaded["value"] is True
 
@@ -1219,6 +1222,9 @@ def test_urls_page_import_excel_error(monkeypatch):
     page = UrlsPage()
 
     page.import_excel()
+
+    while page._excel_thread is not None and page._excel_thread.isRunning():
+        app.processEvents()
 
     assert captured["title"] == "Error al importar"
     assert "Archivo Excel no válido" in captured["message"]
@@ -1357,6 +1363,9 @@ def test_urls_page_send_pending_success(monkeypatch):
 
     page.send_pending()
 
+    while page._index_thread is not None and page._index_thread.isRunning():
+        app.processEvents()
+
     assert captured["title"] == "IndexNow"
     assert "Procesadas: 3" in captured["message"]
     assert "Correctas: 2" in captured["message"]
@@ -1435,8 +1444,14 @@ def test_urls_page_send_pending_error(monkeypatch):
 
     page.send_pending()
 
-    assert captured["title"] == "Error"
+    while page._index_thread is not None and page._index_thread.isRunning():
+        app.processEvents()
+
+    assert captured["title"] == "Error de IndexNow"
     assert "Error de conexión" in captured["message"]
     assert reloaded["value"] is True
+
+
+
 
 
