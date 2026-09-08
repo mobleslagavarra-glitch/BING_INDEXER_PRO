@@ -98,6 +98,10 @@ class UrlsPage(QWidget):
             QTableWidget.SelectionBehavior.SelectRows
         )
 
+        self.table.setSelectionMode(
+            QTableWidget.SelectionMode.ExtendedSelection
+        )
+
         # Optimización para grandes cantidades de URLs.
         self.table.setSortingEnabled(False)
 
@@ -515,47 +519,60 @@ class UrlsPage(QWidget):
 
     def reset_sent_urls(self):
 
-        row = self.table.currentRow()
+        selected_rows = sorted({
+            index.row()
+            for index in self.table.selectionModel().selectedRows()
+        })
 
-        if row < 0:
+        if not selected_rows:
             QMessageBox.information(
                 self,
                 "Marcar como pendientes",
-                "Selecciona una URL."
+                "Selecciona una o varias URLs."
             )
             return
 
         try:
 
-            url_id = int(
-                self.table.item(row, 0).text()
-            )
+            urls = []
 
-            url = self.url_service.get_url(url_id)
+            for row in selected_rows:
 
-            if url is None:
-                QMessageBox.warning(
-                    self,
-                    "Marcar como pendientes",
-                    "La URL ya no existe."
-                )
-                self.load_urls()
-                return
+                item = self.table.item(row, 0)
 
-            if url.status != "ENVIADA":
+                if item is None:
+                    continue
+
+                url_id = int(item.text())
+                url = self.url_service.get_url(url_id)
+
+                if url is not None:
+                    urls.append(url)
+
+            reset_urls = [
+                url
+                for url in urls
+                if url.status in ("ENVIADA", "ERROR")
+            ]
+
+            if not reset_urls:
                 QMessageBox.information(
                     self,
                     "Marcar como pendientes",
-                    "La URL seleccionada no está en estado ENVIADA."
+                    "Ninguna de las URLs seleccionadas est? en estado ENVIADA o ERROR."
                 )
                 return
 
+            cantidad = len(reset_urls)
+
             respuesta = QMessageBox.question(
                 self,
-                "Marcar como pendiente",
+                "Marcar como pendientes",
                 (
-                    "¿Quieres volver a marcar esta URL como "
-                    "PENDIENTE para poder enviarla de nuevo?"
+                    f"?Quieres marcar {cantidad} URL"
+                    f"{'s' if cantidad != 1 else ''} como PENDIENTE "
+                    "para poder enviarla"
+                    f"{'s' if cantidad != 1 else ''} de nuevo?"
                 ),
                 QMessageBox.StandardButton.Yes
                 | QMessageBox.StandardButton.No
@@ -564,27 +581,32 @@ class UrlsPage(QWidget):
             if respuesta != QMessageBox.StandardButton.Yes:
                 return
 
-            url.status = "PENDIENTE"
-            url.response_code = None
-            url.response_message = ""
+            for url in reset_urls:
 
-            self.url_service.update_url(url)
+                url.status = "PENDIENTE"
+                url.response_code = None
+                url.response_message = ""
+
+                self.url_service.update_url(url)
 
             self.load_urls()
 
             QMessageBox.information(
                 self,
-                "URL actualizada",
-                "La URL ha sido marcada como PENDIENTE."
+                "URLs actualizadas",
+                (
+                    f"Se han marcado {cantidad} URL"
+                    f"{'s' if cantidad != 1 else ''} como PENDIENTE."
+                )
             )
 
         except Exception as error:
 
             QMessageBox.warning(
                 self,
-                "No se pudo actualizar",
+                "No se pudieron actualizar",
                 (
-                    "No se pudo marcar la URL como pendiente:"
+                    "No se pudieron marcar las URLs como pendientes:"
                     f"\n\n{error}"
                 )
             )
