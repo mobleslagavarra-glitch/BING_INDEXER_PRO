@@ -1,4 +1,4 @@
-﻿from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
@@ -96,7 +96,10 @@ class HistoryPage(QWidget):
 
         try:
 
-            history = self.service.get_all()
+            if hasattr(self.service, "get_recent"):
+                history = self.service.get_recent(1000)
+            else:
+                history = self.service.get_all()
 
             self.table.setRowCount(
                 len(history)
@@ -131,8 +134,6 @@ class HistoryPage(QWidget):
                             str(value)
                         )
                     )
-
-            self.table.resizeColumnsToContents()
 
             self.table.setColumnWidth(0, 60)
             self.table.setColumnWidth(1, 150)

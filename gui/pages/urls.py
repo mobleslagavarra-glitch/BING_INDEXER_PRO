@@ -1,4 +1,11 @@
-﻿from PySide6.QtCore import QObject, QThread, Signal
+from PySide6.QtCore import (
+    QObject,
+    QThread,
+    Signal,
+    Qt,
+    QAbstractTableModel,
+    QModelIndex,
+)
 
 from PySide6.QtWidgets import (
     QWidget,
@@ -6,7 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QPushButton,
-    QTableWidget,
+    QTableView,
     QTableWidgetItem,
     QMessageBox,
     QFileDialog,
@@ -60,6 +67,163 @@ class ExcelImportWorker(QObject):
             self.error.emit(str(error))
 
 
+class UrlsTableModel(QAbstractTableModel):
+    HEADERS = [
+        "ID",
+        "Dominio",
+        "URL",
+        "Estado",
+        "Código",
+        "Mensaje",
+    ]
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._rows = []
+
+    def rowCount(self, parent=QModelIndex()):
+        if parent.isValid():
+            return 0
+        return len(self._rows)
+
+    def columnCount(self, parent=QModelIndex()):
+        if parent.isValid():
+            return 0
+        return len(self.HEADERS)
+
+    def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
+
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+
+        row = index.row()
+        column = index.column()
+
+        if row < 0 or row >= len(self._rows):
+            return None
+
+        if column < 0 or column >= len(self.HEADERS):
+            return None
+
+        return self._rows[row][column]
+
+    def headerData(
+        self,
+        section,
+        orientation,
+        role=Qt.ItemDataRole.DisplayRole,
+    ):
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+
+        if orientation == Qt.Orientation.Horizontal:
+            if 0 <= section < len(self.HEADERS):
+                return self.HEADERS[section]
+
+        return None
+
+    def set_rows(self, rows):
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
+
+
+class UrlsTableView(QTableView):
+    """
+    QTableView optimizada con una pequeña capa de compatibilidad
+    para mantener las operaciones que utilizaba QTableWidget:
+    rowCount(), columnCount(), item(), currentRow(),
+    horizontalHeaderItem() y selectRow().
+    """
+
+    def rowCount(self):
+        model = self.model()
+        return model.rowCount() if model is not None else 0
+
+    def columnCount(self):
+        model = self.model()
+        return model.columnCount() if model is not None else 0
+
+    def item(self, row, column):
+        model = self.model()
+
+        if model is None:
+            return None
+
+        if row < 0 or row >= model.rowCount():
+            return None
+
+        if column < 0 or column >= model.columnCount():
+            return None
+
+        index = model.index(row, column)
+
+        if not index.isValid():
+            return None
+
+        value = model.data(
+            index,
+            Qt.ItemDataRole.DisplayRole,
+        )
+
+        if value is None:
+            return None
+
+        return QTableWidgetItem(str(value))
+
+    def currentRow(self):
+        index = self.currentIndex()
+
+        if not index.isValid():
+            return -1
+
+        return index.row()
+
+    def selectRow(self, row):
+        model = self.model()
+
+        if model is None:
+            return
+
+        if row < 0 or row >= model.rowCount():
+            return
+
+        index = model.index(row, 0)
+
+        self.setCurrentIndex(index)
+
+        selection_model = self.selectionModel()
+
+        if selection_model is not None:
+            selection_model.select(
+                index,
+                selection_model.SelectionFlag.ClearAndSelect
+                | selection_model.SelectionFlag.Rows,
+            )
+
+    def horizontalHeaderItem(self, column):
+        model = self.model()
+
+        if model is None:
+            return None
+
+        if column < 0 or column >= model.columnCount():
+            return None
+
+        value = model.headerData(
+            column,
+            Qt.Orientation.Horizontal,
+            Qt.ItemDataRole.DisplayRole,
+        )
+
+        if value is None:
+            return None
+
+        return QTableWidgetItem(str(value))
+
+
 class UrlsPage(QWidget):
 
     def __init__(self):
@@ -78,28 +242,20 @@ class UrlsPage(QWidget):
 
         layout = QVBoxLayout()
 
-        self.table = QTableWidget()
-        self.table.setColumnCount(6)
-
-        self.table.setHorizontalHeaderLabels([
-            "ID",
-            "Dominio",
-            "URL",
-            "Estado",
-            "Código",
-            "Mensaje",
-        ])
+        self.table_model = UrlsTableModel(self)
+        self.table = UrlsTableView()
+        self.table.setModel(self.table_model)
 
         self.table.setEditTriggers(
-            QTableWidget.EditTrigger.NoEditTriggers
+            QTableView.EditTrigger.NoEditTriggers
         )
 
         self.table.setSelectionBehavior(
-            QTableWidget.SelectionBehavior.SelectRows
+            QTableView.SelectionBehavior.SelectRows
         )
 
         self.table.setSelectionMode(
-            QTableWidget.SelectionMode.ExtendedSelection
+            QTableView.SelectionMode.ExtendedSelection
         )
 
         # Optimización para grandes cantidades de URLs.
@@ -112,6 +268,16 @@ class UrlsPage(QWidget):
                 column,
                 QHeaderView.ResizeMode.Fixed
             )
+
+        # Optimización de renderizado para miles de filas.
+        # Evita cálculos innecesarios de ajuste de texto y altura
+        # individual de las filas.
+        self.table.setWordWrap(False)
+
+        vertical_header = self.table.verticalHeader()
+        vertical_header.setSectionResizeMode(
+            QHeaderView.ResizeMode.Fixed
+        )
 
         self.table.setColumnWidth(0, 70)
         self.table.setColumnWidth(1, 180)
@@ -173,70 +339,33 @@ class UrlsPage(QWidget):
                 for domain in domains
             }
 
-            # Evitar repintados y procesamiento visual
-            # mientras se cargan todas las filas.
+            rows = []
+
+            for url in urls:
+
+                codigo = (
+                    ""
+                    if url.response_code is None
+                    else str(url.response_code)
+                )
+
+                rows.append((
+                    str(url.id),
+                    domain_map.get(url.domain_id, ""),
+                    url.url,
+                    url.status,
+                    codigo,
+                    url.response_message or "",
+                ))
+
+            # Evitar repintados durante la sustitución del modelo.
             self.table.setUpdatesEnabled(False)
             self.table.blockSignals(True)
             self.table.setSortingEnabled(False)
 
             try:
-
-                self.table.clearContents()
-                self.table.setRowCount(len(urls))
-
-                for row, url in enumerate(urls):
-
-                    self.table.setItem(
-                        row,
-                        0,
-                        QTableWidgetItem(str(url.id))
-                    )
-
-                    self.table.setItem(
-                        row,
-                        1,
-                        QTableWidgetItem(
-                            domain_map.get(
-                                url.domain_id,
-                                ""
-                            )
-                        )
-                    )
-
-                    self.table.setItem(
-                        row,
-                        2,
-                        QTableWidgetItem(url.url)
-                    )
-
-                    self.table.setItem(
-                        row,
-                        3,
-                        QTableWidgetItem(url.status)
-                    )
-
-                    codigo = (
-                        ""
-                        if url.response_code is None
-                        else str(url.response_code)
-                    )
-
-                    self.table.setItem(
-                        row,
-                        4,
-                        QTableWidgetItem(codigo)
-                    )
-
-                    self.table.setItem(
-                        row,
-                        5,
-                        QTableWidgetItem(
-                            url.response_message or ""
-                        )
-                    )
-
+                self.table_model.set_rows(rows)
             finally:
-
                 self.table.blockSignals(False)
                 self.table.setUpdatesEnabled(True)
 

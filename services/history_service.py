@@ -1,4 +1,4 @@
-﻿import sqlite3
+import sqlite3
 
 from core.database import DB_FILE
 
@@ -69,6 +69,38 @@ class HistoryService:
                 FROM history
                 ORDER BY id DESC
             """)
+
+            return cursor.fetchall()
+
+        finally:
+            conn.close()
+
+    def get_recent(self, limit=1000):
+        try:
+            limit = int(limit)
+        except (TypeError, ValueError):
+            limit = 1000
+
+        limit = max(1, min(limit, 10000))
+
+        conn = self.get_connection()
+
+        try:
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT
+                    id,
+                    event_date,
+                    event_type,
+                    description,
+                    processed_count,
+                    success_count,
+                    error_count
+                FROM history
+                ORDER BY id DESC
+                LIMIT ?
+            """, (limit,))
 
             return cursor.fetchall()
 
